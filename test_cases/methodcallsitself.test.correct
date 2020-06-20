@@ -1,0 +1,146 @@
+#1
+_program
+  #1
+  _class
+    Main
+    Object
+    "test_cases/methodcallsitself.test"
+    (
+    #1
+    _method
+      main
+      Int
+      #1
+      _int
+        0
+      : Int
+    )
+  #1
+  _class
+    A
+    Object
+    "test_cases/methodcallsitself.test"
+    (
+    #1
+    _method
+      f
+      Int
+      #1
+      _dispatch
+        #1
+        _object
+          self
+        : SELF_TYPE
+        f
+        (
+        )
+      : Int
+    #1
+    _method
+      g
+      #1
+      _formal
+        a
+        Int
+      Int
+      #1
+      _dispatch
+        #1
+        _object
+          self
+        : SELF_TYPE
+        g
+        (
+        #1
+        _dispatch
+          #1
+          _object
+            self
+          : SELF_TYPE
+          g
+          (
+          #1
+          _dispatch
+            #1
+            _object
+              self
+            : SELF_TYPE
+            f
+            (
+            )
+          : Int
+          )
+        : Int
+        )
+      : Int
+    #1
+    _method
+      h
+      #1
+      _formal
+        a
+        Int
+      #1
+      _formal
+        b
+        Int
+      Int
+      #1
+      _dispatch
+        #1
+        _object
+          self
+        : SELF_TYPE
+        h
+        (
+        #1
+        _dispatch
+          #1
+          _object
+            self
+          : SELF_TYPE
+          h
+          (
+          #1
+          _int
+            0
+          : Int
+          #1
+          _int
+            0
+          : Int
+          )
+        : Int
+        #1
+        _dispatch
+          #1
+          _object
+            self
+          : SELF_TYPE
+          h
+          (
+          #1
+          _dispatch
+            #1
+            _object
+              self
+            : SELF_TYPE
+            f
+            (
+            )
+          : Int
+          #1
+          _dispatch
+            #1
+            _object
+              self
+            : SELF_TYPE
+            f
+            (
+            )
+          : Int
+          )
+        : Int
+        )
+      : Int
+    )

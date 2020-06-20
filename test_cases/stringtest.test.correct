@@ -1,0 +1,58 @@
+#1
+_program
+  #1
+  _class
+    Main
+    Object
+    "test_cases/stringtest.test"
+    (
+    #1
+    _method
+      main
+      Object
+      #1
+      _block
+        #1
+        _dispatch
+          #1
+          _string
+            "test"
+          : String
+          length
+          (
+          )
+        : Int
+        #1
+        _dispatch
+          #1
+          _string
+            "test"
+          : String
+          substr
+          (
+          #1
+          _int
+            0
+          : Int
+          #1
+          _int
+            1
+          : Int
+          )
+        : String
+        #1
+        _dispatch
+          #1
+          _string
+            "test"
+          : String
+          concat
+          (
+          #1
+          _string
+            " me"
+          : String
+          )
+        : String
+      : String
+    )
