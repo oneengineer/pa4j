@@ -1,0 +1,688 @@
+#1
+_program
+  #1
+  _class
+    List
+    IO
+    "test_cases/sort_list.cl"
+    (
+    #1
+    _method
+      isNil
+      Bool
+      #1
+      _block
+        #1
+        _dispatch
+          #1
+          _object
+            self
+          : _no_type
+          abort
+          (
+          )
+        : _no_type
+        #1
+        _bool
+          1
+        : _no_type
+      : _no_type
+    #1
+    _method
+      cons
+      #1
+      _formal
+        hd
+        Int
+      Cons
+      #1
+      _let
+        new_cell
+        Cons
+        #1
+        _new
+          Cons
+        : _no_type
+        #1
+        _dispatch
+          #1
+          _object
+            new_cell
+          : _no_type
+          init
+          (
+          #1
+          _object
+            hd
+          : _no_type
+          #1
+          _object
+            self
+          : _no_type
+          )
+        : _no_type
+      : _no_type
+    #1
+    _method
+      car
+      Int
+      #1
+      _block
+        #1
+        _dispatch
+          #1
+          _object
+            self
+          : _no_type
+          abort
+          (
+          )
+        : _no_type
+        #1
+        _new
+          Int
+        : _no_type
+      : _no_type
+    #1
+    _method
+      cdr
+      List
+      #1
+      _block
+        #1
+        _dispatch
+          #1
+          _object
+            self
+          : _no_type
+          abort
+          (
+          )
+        : _no_type
+        #1
+        _new
+          List
+        : _no_type
+      : _no_type
+    #1
+    _method
+      rev
+      List
+      #1
+      _dispatch
+        #1
+        _object
+          self
+        : _no_type
+        cdr
+        (
+        )
+      : _no_type
+    #1
+    _method
+      sort
+      List
+      #1
+      _dispatch
+        #1
+        _object
+          self
+        : _no_type
+        cdr
+        (
+        )
+      : _no_type
+    #1
+    _method
+      insert
+      #1
+      _formal
+        i
+        Int
+      List
+      #1
+      _dispatch
+        #1
+        _object
+          self
+        : _no_type
+        cdr
+        (
+        )
+      : _no_type
+    #1
+    _method
+      rcons
+      #1
+      _formal
+        i
+        Int
+      List
+      #1
+      _dispatch
+        #1
+        _object
+          self
+        : _no_type
+        cdr
+        (
+        )
+      : _no_type
+    #1
+    _method
+      print_list
+      Object
+      #1
+      _dispatch
+        #1
+        _object
+          self
+        : _no_type
+        abort
+        (
+        )
+      : _no_type
+    )
+  #1
+  _class
+    Cons
+    List
+    "test_cases/sort_list.cl"
+    (
+    #1
+    _attr
+      xcar
+      Int
+      #1
+      _no_expr
+      : _no_type
+    #1
+    _attr
+      xcdr
+      List
+      #1
+      _no_expr
+      : _no_type
+    #1
+    _method
+      isNil
+      Bool
+      #1
+      _bool
+        0
+      : _no_type
+    #1
+    _method
+      init
+      #1
+      _formal
+        hd
+        Int
+      #1
+      _formal
+        tl
+        List
+      Cons
+      #1
+      _block
+        #1
+        _assign
+          xcar
+          #1
+          _object
+            hd
+          : _no_type
+        : _no_type
+        #1
+        _assign
+          xcdr
+          #1
+          _object
+            tl
+          : _no_type
+        : _no_type
+        #1
+        _object
+          self
+        : _no_type
+      : _no_type
+    #1
+    _method
+      car
+      Int
+      #1
+      _object
+        xcar
+      : _no_type
+    #1
+    _method
+      cdr
+      List
+      #1
+      _object
+        xcdr
+      : _no_type
+    #1
+    _method
+      rev
+      List
+      #1
+      _dispatch
+        #1
+        _dispatch
+          #1
+          _object
+            xcdr
+          : _no_type
+          rev
+          (
+          )
+        : _no_type
+        rcons
+        (
+        #1
+        _object
+          xcar
+        : _no_type
+        )
+      : _no_type
+    #1
+    _method
+      sort
+      List
+      #1
+      _dispatch
+        #1
+        _dispatch
+          #1
+          _object
+            xcdr
+          : _no_type
+          sort
+          (
+          )
+        : _no_type
+        insert
+        (
+        #1
+        _object
+          xcar
+        : _no_type
+        )
+      : _no_type
+    #1
+    _method
+      insert
+      #1
+      _formal
+        i
+        Int
+      List
+      #1
+      _cond
+        #1
+        _lt
+          #1
+          _object
+            i
+          : _no_type
+          #1
+          _object
+            xcar
+          : _no_type
+        : _no_type
+        #1
+        _dispatch
+          #1
+          _new
+            Cons
+          : _no_type
+          init
+          (
+          #1
+          _object
+            i
+          : _no_type
+          #1
+          _object
+            self
+          : _no_type
+          )
+        : _no_type
+        #1
+        _dispatch
+          #1
+          _new
+            Cons
+          : _no_type
+          init
+          (
+          #1
+          _object
+            xcar
+          : _no_type
+          #1
+          _dispatch
+            #1
+            _object
+              xcdr
+            : _no_type
+            insert
+            (
+            #1
+            _object
+              i
+            : _no_type
+            )
+          : _no_type
+          )
+        : _no_type
+      : _no_type
+    #1
+    _method
+      rcons
+      #1
+      _formal
+        i
+        Int
+      List
+      #1
+      _dispatch
+        #1
+        _new
+          Cons
+        : _no_type
+        init
+        (
+        #1
+        _object
+          xcar
+        : _no_type
+        #1
+        _dispatch
+          #1
+          _object
+            xcdr
+          : _no_type
+          rcons
+          (
+          #1
+          _object
+            i
+          : _no_type
+          )
+        : _no_type
+        )
+      : _no_type
+    #1
+    _method
+      print_list
+      Object
+      #1
+      _block
+        #1
+        _dispatch
+          #1
+          _object
+            self
+          : _no_type
+          out_int
+          (
+          #1
+          _object
+            xcar
+          : _no_type
+          )
+        : _no_type
+        #1
+        _dispatch
+          #1
+          _object
+            self
+          : _no_type
+          out_string
+          (
+          #1
+          _string
+            "\n"
+          : _no_type
+          )
+        : _no_type
+        #1
+        _dispatch
+          #1
+          _object
+            xcdr
+          : _no_type
+          print_list
+          (
+          )
+        : _no_type
+      : _no_type
+    )
+  #1
+  _class
+    Nil
+    List
+    "test_cases/sort_list.cl"
+    (
+    #1
+    _method
+      isNil
+      Bool
+      #1
+      _bool
+        1
+      : _no_type
+    #1
+    _method
+      rev
+      List
+      #1
+      _object
+        self
+      : _no_type
+    #1
+    _method
+      sort
+      List
+      #1
+      _object
+        self
+      : _no_type
+    #1
+    _method
+      insert
+      #1
+      _formal
+        i
+        Int
+      List
+      #1
+      _dispatch
+        #1
+        _object
+          self
+        : _no_type
+        rcons
+        (
+        #1
+        _object
+          i
+        : _no_type
+        )
+      : _no_type
+    #1
+    _method
+      rcons
+      #1
+      _formal
+        i
+        Int
+      List
+      #1
+      _dispatch
+        #1
+        _new
+          Cons
+        : _no_type
+        init
+        (
+        #1
+        _object
+          i
+        : _no_type
+        #1
+        _object
+          self
+        : _no_type
+        )
+      : _no_type
+    #1
+    _method
+      print_list
+      Object
+      #1
+      _bool
+        1
+      : _no_type
+    )
+  #1
+  _class
+    Main
+    IO
+    "test_cases/sort_list.cl"
+    (
+    #1
+    _attr
+      l
+      List
+      #1
+      _no_expr
+      : _no_type
+    #1
+    _method
+      iota
+      #1
+      _formal
+        i
+        Int
+      List
+      #1
+      _block
+        #1
+        _assign
+          l
+          #1
+          _new
+            Nil
+          : _no_type
+        : _no_type
+        #1
+        _let
+          j
+          Int
+          #1
+          _int
+            0
+          : _no_type
+          #1
+          _loop
+            #1
+            _lt
+              #1
+              _object
+                j
+              : _no_type
+              #1
+              _object
+                i
+              : _no_type
+            : _no_type
+            #1
+            _block
+              #1
+              _assign
+                l
+                #1
+                _dispatch
+                  #1
+                  _new
+                    Cons
+                  : _no_type
+                  init
+                  (
+                  #1
+                  _object
+                    j
+                  : _no_type
+                  #1
+                  _object
+                    l
+                  : _no_type
+                  )
+                : _no_type
+              : _no_type
+              #1
+              _assign
+                j
+                #1
+                _plus
+                  #1
+                  _object
+                    j
+                  : _no_type
+                  #1
+                  _int
+                    1
+                  : _no_type
+                : _no_type
+              : _no_type
+            : _no_type
+          : _no_type
+        : _no_type
+        #1
+        _object
+          l
+        : _no_type
+      : _no_type
+    #1
+    _method
+      main
+      Object
+      #1
+      _block
+        #1
+        _dispatch
+          #1
+          _dispatch
+            #1
+            _dispatch
+              #1
+              _dispatch
+                #1
+                _object
+                  self
+                : _no_type
+                iota
+                (
+                #1
+                _int
+                  20
+                : _no_type
+                )
+              : _no_type
+              rev
+              (
+              )
+            : _no_type
+            sort
+            (
+            )
+          : _no_type
+          print_list
+          (
+          )
+        : _no_type
+      : _no_type
+    )

@@ -1,0 +1,215 @@
+#1
+_program
+  #1
+  _class
+    A
+    Object
+    "test_cases/new-st.cl"
+    (
+    #1
+    _attr
+      x
+      Int
+      #1
+      _plus
+        #1
+        _object
+          x
+        : _no_type
+        #1
+        _int
+          1
+        : _no_type
+      : _no_type
+    #1
+    _method
+      printX
+      Object
+      #1
+      _block
+        #1
+        _dispatch
+          #1
+          _new
+            IO
+          : _no_type
+          out_string
+          (
+          #1
+          _string
+            "x is "
+          : _no_type
+          )
+        : _no_type
+        #1
+        _dispatch
+          #1
+          _new
+            IO
+          : _no_type
+          out_int
+          (
+          #1
+          _object
+            x
+          : _no_type
+          )
+        : _no_type
+        #1
+        _dispatch
+          #1
+          _new
+            IO
+          : _no_type
+          out_string
+          (
+          #1
+          _string
+            "\n"
+          : _no_type
+          )
+        : _no_type
+      : _no_type
+    #1
+    _method
+      new_st
+      A
+      #1
+      _new
+        SELF_TYPE
+      : _no_type
+    #1
+    _method
+      bump
+      Object
+      #1
+      _assign
+        x
+        #1
+        _plus
+          #1
+          _object
+            x
+          : _no_type
+          #1
+          _int
+            1
+          : _no_type
+        : _no_type
+      : _no_type
+    )
+  #1
+  _class
+    Main
+    Object
+    "test_cases/new-st.cl"
+    (
+    #1
+    _method
+      main
+      Object
+      #1
+      _let
+        a1
+        A
+        #1
+        _new
+          A
+        : _no_type
+        #1
+        _let
+          a2
+          A
+          #1
+          _no_expr
+          : _no_type
+          #1
+          _block
+            #1
+            _dispatch
+              #1
+              _object
+                a1
+              : _no_type
+              printX
+              (
+              )
+            : _no_type
+            #1
+            _dispatch
+              #1
+              _object
+                a1
+              : _no_type
+              bump
+              (
+              )
+            : _no_type
+            #1
+            _dispatch
+              #1
+              _object
+                a1
+              : _no_type
+              bump
+              (
+              )
+            : _no_type
+            #1
+            _dispatch
+              #1
+              _object
+                a1
+              : _no_type
+              bump
+              (
+              )
+            : _no_type
+            #1
+            _dispatch
+              #1
+              _object
+                a1
+              : _no_type
+              printX
+              (
+              )
+            : _no_type
+            #1
+            _assign
+              a2
+              #1
+              _dispatch
+                #1
+                _object
+                  a1
+                : _no_type
+                new_st
+                (
+                )
+              : _no_type
+            : _no_type
+            #1
+            _dispatch
+              #1
+              _object
+                a2
+              : _no_type
+              printX
+              (
+              )
+            : _no_type
+            #1
+            _dispatch
+              #1
+              _object
+                a1
+              : _no_type
+              printX
+              (
+              )
+            : _no_type
+          : _no_type
+        : _no_type
+      : _no_type
+    )

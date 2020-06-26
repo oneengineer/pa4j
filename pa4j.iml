@@ -8,5 +8,7 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="java-cup-11b" level="project" />
+    <orderEntry type="library" name="edu.princeton.cup:java-cup:10k" level="project" />
+    <orderEntry type="library" name="org.bytedeco:llvm-platform:10.0.0-1.5.3" level="project" />
   </component>
 </module>

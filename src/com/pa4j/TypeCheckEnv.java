@@ -118,8 +118,8 @@ public class TypeCheckEnv {
     public static final HashSet<AbstractSymbol> basicClasses = new LinkedHashSet<>();
 
     static {
-        basicClasses.add(TreeConstants.Object_);
-        basicClasses.add(TreeConstants.IO);
+        //basicClasses.add(TreeConstants.Object_);
+        //basicClasses.add(TreeConstants.IO);
         basicClasses.add(TreeConstants.Str);
         basicClasses.add(TreeConstants.Bool);
         basicClasses.add(TreeConstants.SELF_TYPE);

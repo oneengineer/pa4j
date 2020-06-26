@@ -87,6 +87,13 @@ abstract class ListNode extends TreeNode {
         }
     }
 
+    public void code(CodeGenEnv env){
+        for (Object element : elements) {
+            var x = (TreeNode) element;
+            x.code(env);
+        }
+    }
+
     protected ListNode(int lineNumber, Vector elements) {
         super(lineNumber);
         this.elements = elements;

@@ -10,7 +10,13 @@ import com.sun.source.tree.Tree;
 
 import java.util.*;
 import java.io.PrintStream;
+import java.util.Vector;
 
+import org.bytedeco.javacpp.BytePointer;
+import org.bytedeco.javacpp.PointerPointer;
+import org.bytedeco.llvm.LLVM.*;
+import org.bytedeco.llvm.global.LLVM.*;
+import static org.bytedeco.llvm.global.LLVM.*;
 
 /**
  * Defines simple phylum Program
@@ -23,6 +29,8 @@ abstract class Program extends TreeNode {
     public abstract void dump_with_types(PrintStream out, int n);
 
     public abstract void semant();
+
+    public abstract void cgen();
 
 }
 
@@ -130,6 +138,7 @@ class Features extends ListNode {
     public TreeNode copy() {
         return new Features(lineNumber, copyElements());
     }
+
 }
 
 
@@ -235,6 +244,13 @@ abstract class Expression extends TreeNode {
                 throw new RuntimeException("static type comparision requires the same type");
         }
         this.set_type(AbstractTable.BooleanTypeSymbol);
+    }
+
+
+    public LLVMValueRef returnValue;
+
+    public void code(CodeGenEnv env){
+        throw new RuntimeException("Not implemented");
     }
 
 }
@@ -422,6 +438,25 @@ class programc extends Program {
         }
     }
 
+
+    /*
+    * generate code
+    * */
+    public void cgen(){
+        // initialize code env
+        var cenv =  new CodeGenEnv();
+        cenv.init();
+        classes.code(cenv);
+
+        //cenv.DumpIR();
+        var error = new BytePointer(1000 * 1000); // Used to retrieve messages from functions
+
+        cenv.DumpIRToFile("out.ll");
+        LLVMVerifyModule(cenv.module, LLVMAbortProcessAction, error);
+        cenv.DumpIRToFile("out.ll");
+        //cenv.DumpIR();//debug
+    }
+
 }
 
 
@@ -503,6 +538,14 @@ class class_c extends Class_ {
         //System.out.println("class semant");
         env.symTable.exitScope(); // end class
         env.currentClass = null;
+    }
+
+    @Override
+    public void code(CodeGenEnv env) {
+        //TODO register a class, especially the layout
+
+        // emit all functions
+        this.features.code(env);
     }
 
     public AbstractSymbol getFilename() {
@@ -638,6 +681,54 @@ class method extends Feature {
             }
         }
 
+    }
+
+    @Override
+    public void code(CodeGenEnv env) {
+        //TODO dump a function
+        //  1. create function type, register name in env
+        //  2. parse body,
+
+        var rtype = env.translateType(this.return_type);
+        var ai = formals.getElements();
+        var n = formals.getLength();
+        var items = new StoreItem[n];
+        var arr = new LLVMTypeRef[ n ];
+        int i = 0;
+        while (ai.hasMoreElements()){
+            var t = (formalc)ai.nextElement();
+            arr[i] = env.translateType(t.type_decl);
+            var item = new StoreItem();
+            item.funParamIdx = i;
+            item.name = t.name.str;
+            items[i] = item;
+        }
+
+        // create function type
+        LLVMTypeRef funtype = LLVMFunctionType(rtype, new PointerPointer(arr), n, 0);
+        // register function
+        LLVMValueRef fun = env.addFunction(funtype, this.name.str);
+
+        // register parameters into env
+        for (var item: items)
+            env.valueMap.put( item.name, item );
+        // register this function
+        // TODO use 2 pass, 1st register function, second generate code
+        env.funMap.put( this.name.str, fun );
+        // fun is the BB of this function
+        env.currentFunctionRef = fun;
+        var BB = LLVMAppendBasicBlock(fun, "function_BB");
+        LLVMPositionBuilderAtEnd(env.builder, BB);
+        this.expr.code(env);
+
+        if (!this.name.str.equals("main")){
+            LLVMBuildRet(env.builder, this.expr.returnValue);
+        } else {
+            LLVMBuildRetVoid(env.builder);
+        }
+
+
+        //env.DumpIR();
     }
 
 
@@ -1057,6 +1148,44 @@ class dispatch extends Expression {
 
     }
 
+    @Override
+    public void code(CodeGenEnv env) {
+        //TODO treat buildin function specially
+
+
+
+        //TODO handle self_type and inherit properly
+        //expr.code(env);
+
+        actual.code(env); // TODO need to check parameter type
+
+        var n = actual.getLength();
+        var ai = actual.getElements();
+        var arr = new LLVMValueRef[n];
+        var i = 0;
+        while (ai.hasMoreElements()){
+            var expr = (Expression)ai.nextElement();
+            arr[i] = expr.returnValue;
+            i += 1;
+        }
+
+        if (this.name.str.equals("out_int")){
+            env.call_out_int(arr[0]);
+            return;
+        }
+
+        if (this.name.str.equals("out_string")){
+            env.call_out_string(arr[0]);
+            return;
+        }
+
+        // call function
+        //TODO use abstract Symbol as map key, instead of string
+        var functionName = this.name.str;
+        LLVMValueRef fun = env.funMap.get(functionName);
+        this.returnValue = LLVMBuildCall(env.builder, fun,
+                new PointerPointer(arr), n, "ret_r");
+    }
 
     public void dump_with_types(PrintStream out, int n) {
         dump_line(out, n);
@@ -1112,7 +1241,6 @@ class cond extends Expression {
 
     @Override
     public void semant(TypeCheckEnv env) {
-        // TODO if else AST,  notice the return type should be  a2 `join` a3
         pred.semant(env);
 
         // pred should have boolean type
@@ -1135,6 +1263,46 @@ class cond extends Expression {
         then_exp.dump_with_types(out, n + 2);
         else_exp.dump_with_types(out, n + 2);
         dump_type(out, n);
+    }
+
+    @Override
+    public void code(CodeGenEnv env) {
+        // if pred then then_expr, else else_expr fi
+        // create 2 blocks, then block and else block
+        //LLVMBasicBlockRef ifBB = LLVMAppendBasicBlock(env.currentFunctionRef, "if_BB");
+        LLVMBasicBlockRef thenBB = LLVMAppendBasicBlock(env.currentFunctionRef, "then_BB");
+        LLVMBasicBlockRef elseBB = LLVMAppendBasicBlock(env.currentFunctionRef, "else_BB");
+        LLVMBasicBlockRef endBB = LLVMAppendBasicBlock(env.currentFunctionRef, "endBB");
+
+        this.pred.code(env);
+        //set pointer to then BB
+        var predResult = pred.returnValue;
+        LLVMBuildCondBr(env.builder, predResult, thenBB, elseBB);
+
+        LLVMPositionBuilderAtEnd(env.builder, thenBB);
+        this.then_exp.code(env);
+        LLVMBuildBr(env.builder, endBB); // jmp to end
+        LLVMPositionBuilderAtEnd(env.builder, elseBB);
+        this.else_exp.code(env);
+        LLVMBuildBr(env.builder, endBB); // jmp to end
+        LLVMPositionBuilderAtEnd(env.builder, endBB);
+
+        System.out.println("\nthen BB --------- ");
+        env.DumpIR(this.then_exp.returnValue);
+        System.out.println("\nelse BB --------- ");
+        env.DumpIR(this.else_exp.returnValue);
+
+        // insert phi node
+        var returnType = env.translateType(this.get_type());
+        var result_phi = LLVMBuildPhi(env.builder, returnType, "ifelse" );
+        LLVMAddIncoming( result_phi,
+                new PointerPointer( then_exp.returnValue, else_exp.returnValue),
+                new PointerPointer( thenBB, elseBB ),
+                2);
+        this.returnValue = result_phi;
+        System.out.println("\nend BB --------- ");
+        env.DumpIR(result_phi);
+        System.out.println("\n ---- if else end ----- ");
     }
 
 }
@@ -1313,6 +1481,10 @@ class block extends Expression {
         env.symTable.exitScope();
     }
 
+    @Override
+    public void code(CodeGenEnv env) {
+        this.body.code(env);
+    }
 
     public void dump_with_types(PrintStream out, int n) {
         dump_line(out, n);
@@ -1459,6 +1631,14 @@ class plus extends Expression {
         dump_type(out, n);
     }
 
+    @Override
+    public void code(CodeGenEnv env) {
+        e1.code(env);
+        e2.code(env);
+        var result = LLVMBuildAdd(env.builder, e1.returnValue, e2.returnValue, "add_r");
+        this.returnValue = result;
+    }
+
 }
 
 
@@ -1501,6 +1681,14 @@ class sub extends Expression {
         e1.dump_with_types(out, n + 2);
         e2.dump_with_types(out, n + 2);
         dump_type(out, n);
+    }
+
+    @Override
+    public void code(CodeGenEnv env) {
+        e1.code(env);
+        e2.code(env);
+        var result = LLVMBuildSub(env.builder, e1.returnValue, e2.returnValue, "sub_r");
+        this.returnValue = result;
     }
 
     @Override
@@ -1565,6 +1753,13 @@ class mul extends Expression {
             throw new SemanticException("Cannot mul expression doesn't have int type", this);
         this.set_type(AbstractTable.IntTypeSymbol);
     }
+
+    @Override
+    public void code(CodeGenEnv env) {
+        e1.code(env);
+        e2.code(env);
+        this.returnValue = LLVMBuildMul( env.builder, e1.returnValue, e2.returnValue, "mul");
+    }
 }
 
 
@@ -1617,6 +1812,13 @@ class divide extends Expression {
                 e2.get_type() != AbstractTable.IntTypeSymbol )
             throw new SemanticException("Cannot divide expression doesn't have int type", this);
         this.set_type(AbstractTable.IntTypeSymbol);
+    }
+
+    @Override
+    public void code(CodeGenEnv env) {
+        e1.code(env);
+        e2.code(env);
+        this.returnValue = LLVMBuildSDiv( env.builder, e1.returnValue, e2.returnValue, "div");
     }
 }
 
@@ -1712,6 +1914,13 @@ class lt extends Expression {
         this.compareSemant(e1, e2, env);
     }
 
+    @Override
+    public void code(CodeGenEnv env) {
+        e1.code(env);
+        e2.code(env);
+        this.returnValue = LLVMBuildICmp( env.builder, LLVMIntSLT, e1.returnValue, e2.returnValue, "eq");
+    }
+
 }
 
 
@@ -1761,6 +1970,13 @@ class eq extends Expression {
         dump_type(out, n);
     }
 
+    @Override
+    public void code(CodeGenEnv env) {
+        e1.code(env);
+        e2.code(env);
+        this.returnValue = LLVMBuildICmp( env.builder, LLVMIntEQ, e1.returnValue, e2.returnValue, "eq");
+    }
+
 }
 
 
@@ -1801,6 +2017,12 @@ class leq extends Expression {
         this.compareSemant(e1, e2, env);
     }
 
+    @Override
+    public void code(CodeGenEnv env) {
+        e1.code(env);
+        e2.code(env);
+        this.returnValue = LLVMBuildICmp( env.builder, LLVMIntSLE, e1.returnValue, e2.returnValue, "eq");
+    }
 
     public void dump_with_types(PrintStream out, int n) {
         dump_line(out, n);
@@ -1894,6 +2116,11 @@ class int_const extends Expression {
         this.set_type( AbstractTable.IntTypeSymbol );
     }
 
+    @Override
+    public void code(CodeGenEnv env) {
+        var v = Integer.parseInt(this.token.str);
+        this.returnValue = LLVMConstInt( LLVMInt32Type(), v, 1);
+    }
 
     public void dump_with_types(PrintStream out, int n) {
         dump_line(out, n);
@@ -1983,6 +2210,11 @@ class string_const extends Expression {
         this.set_type( AbstractTable.StringTypeSymbol );
     }
 
+    @Override
+    public void code(CodeGenEnv env) {
+        var s = this.token.str;
+        this.returnValue = env.global_text(s, s);
+    }
 
     public void dump_with_types(PrintStream out, int n) {
         dump_line(out, n);
@@ -2165,6 +2397,11 @@ class object extends Expression {
         this.set_type(t);
     }
 
+    @Override
+    public void code(CodeGenEnv env) {
+        // TODO look up table in env, find address of symbol, then emit load return reg
+        this.returnValue = env.valueMap.get( this.name.str ).code(env);
+    }
 
     public void dump_with_types(PrintStream out, int n) {
         dump_line(out, n);

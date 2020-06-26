@@ -1,0 +1,93 @@
+#1
+_program
+  #1
+  _class
+    Base
+    IO
+    "test_cases/copy-self-dispatch.cl"
+    (
+    #1
+    _method
+      identify
+      Object
+      #1
+      _dispatch
+        #1
+        _object
+          self
+        : _no_type
+        out_string
+        (
+        #1
+        _string
+          "base\n"
+        : _no_type
+        )
+      : _no_type
+    #1
+    _method
+      duplicate
+      Base
+      #1
+      _dispatch
+        #1
+        _object
+          self
+        : _no_type
+        copy
+        (
+        )
+      : _no_type
+    )
+  #1
+  _class
+    Derived
+    Base
+    "test_cases/copy-self-dispatch.cl"
+    (
+    #1
+    _method
+      identify
+      Object
+      #1
+      _dispatch
+        #1
+        _object
+          self
+        : _no_type
+        out_string
+        (
+        #1
+        _string
+          "derived\n"
+        : _no_type
+        )
+      : _no_type
+    )
+  #1
+  _class
+    Main
+    Object
+    "test_cases/copy-self-dispatch.cl"
+    (
+    #1
+    _method
+      main
+      Object
+      #1
+      _dispatch
+        #1
+        _dispatch
+          #1
+          _new
+            Derived
+          : _no_type
+          duplicate
+          (
+          )
+        : _no_type
+        identify
+        (
+        )
+      : _no_type
+    )

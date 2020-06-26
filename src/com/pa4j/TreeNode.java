@@ -348,6 +348,10 @@ abstract class TreeNode {
         // default function does nothing
     }
 
+    public void code(CodeGenEnv env) {
+        throw new RuntimeException("not implemented");
+    }
+
     public String dumpToString(){
         var y = new ByteArrayOutputStream();
         var x = new PrintStream(y);

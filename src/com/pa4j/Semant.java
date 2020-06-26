@@ -204,43 +204,49 @@ class Semant {
         }
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         args = Flags.handleFlags(args);
         //test_all();
-        test_everything_all();
-        System.out.println("Test all good");
+        //test_everything_all();
+        //System.out.println("Test all good");
+        //ASTLexer lexer = new ASTLexer(new InputStreamReader(System.in));
+
+        // CHANGED basic types inited here
+
+        //var reader1 = new InputStreamReader( new FileInputStream( "W:\\p\\pa4j\\src\\com\\pa4j\\good.cl" ));
+        //var reader1 = new InputStreamReader(new FileInputStream("resource/assignment.test.parsed"));
+        //var reader1 = new InputStreamReader(new FileInputStream("resource/basic.test.parsed"));
+        //var reader1 = new InputStreamReader(new FileInputStream("resource/stringtest.test.parsed"));
+        //var reader1 = new InputStreamReader(new FileInputStream("resource/methodnameclash.test.parsed"));
+        //var reader1 = new InputStreamReader(new FileInputStream("resource/if.test.parsed"));
+        var reader1 = new InputStreamReader(new FileInputStream("resource/fibo.cl.parsed"));
+
+        //var reader1 = new InputStreamReader( new FileInputStream( "resource\\list.cl.parsed" ));
+
+        ASTLexer lexer = new ASTLexer(reader1);
+        ASTParser parser = new ASTParser(lexer);
+        Object result = null;
         try {
-            //ASTLexer lexer = new ASTLexer(new InputStreamReader(System.in));
-
-            // CHANGED basic types inited here
-
-            //var reader1 = new InputStreamReader( new FileInputStream( "W:\\p\\pa4j\\src\\com\\pa4j\\good.cl" ));
-            //var reader1 = new InputStreamReader(new FileInputStream("resource/assignment.test.parsed"));
-            //var reader1 = new InputStreamReader(new FileInputStream("resource/basic.test.parsed"));
-            var reader1 = new InputStreamReader(new FileInputStream("resource/stringtest.test.parsed")); // TODO
-            //var reader1 = new InputStreamReader(new FileInputStream("resource/methodnameclash.test.parsed"));
-            //var reader1 = new InputStreamReader(new FileInputStream("resource/if.test.parsed"));
-
-            //var reader1 = new InputStreamReader( new FileInputStream( "resource\\list.cl.parsed" ));
-
-            ASTLexer lexer = new ASTLexer(reader1);
-            ASTParser parser = new ASTParser(lexer);
-            Object result = parser.parse().value;
-
-            System.out.println(" END " + result);
-            //return ;
-
-            ((Program) result).semant();
-            var writer = new PrintStream( new FileOutputStream("resource/my.assignment.test.parsed"));
-
-            // write to STDOUT
-            //((Program) result).dump_with_types(System.out, 0);
-
-            // write to File
-            ((Program) result).dump_with_types(writer, 0);
-            //((Program)result).dump(System.out, 0);
-        } catch (Exception ex) {
-            ex.printStackTrace(System.err);
+            result = parser.parse().value;
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+
+        System.out.println(" END " + result);
+        //return ;
+
+        ((Program) result).semant();
+        var writer = new PrintStream( new FileOutputStream("resource/my.assignment.test.parsed"));
+
+
+        ((Program) result).cgen();
+
+
+        // write to STDOUT
+        //((Program) result).dump_with_types(System.out, 0);
+
+        // write to File
+        ((Program) result).dump_with_types(writer, 0);
+        //((Program)result).dump(System.out, 0);
     }
 }

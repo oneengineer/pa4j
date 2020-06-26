@@ -1,0 +1,201 @@
+#1
+_program
+  #1
+  _class
+    Main
+    IO
+    "test_cases/multiple-dispatch.cl"
+    (
+    #1
+    _attr
+      x
+      Int
+      #1
+      _no_expr
+      : _no_type
+    #1
+    _method
+      f
+      #1
+      _formal
+        y
+        Int
+      SELF_TYPE
+      #1
+      _block
+        #1
+        _dispatch
+          #1
+          _object
+            self
+          : _no_type
+          out_int
+          (
+          #1
+          _plus
+            #1
+            _object
+              x
+            : _no_type
+            #1
+            _object
+              y
+            : _no_type
+          : _no_type
+          )
+        : _no_type
+        #1
+        _dispatch
+          #1
+          _object
+            self
+          : _no_type
+          out_string
+          (
+          #1
+          _string
+            "\n"
+          : _no_type
+          )
+        : _no_type
+        #1
+        _object
+          self
+        : _no_type
+      : _no_type
+    #1
+    _method
+      g
+      #1
+      _formal
+        z
+        Int
+      Int
+      #1
+      _block
+        #1
+        _assign
+          x
+          #1
+          _plus
+            #1
+            _object
+              x
+            : _no_type
+            #1
+            _int
+              1
+            : _no_type
+          : _no_type
+        : _no_type
+        #1
+        _plus
+          #1
+          _object
+            z
+          : _no_type
+          #1
+          _object
+            x
+          : _no_type
+        : _no_type
+      : _no_type
+    #1
+    _method
+      main
+      Object
+      #1
+      _dispatch
+        #1
+        _dispatch
+          #1
+          _dispatch
+            #1
+            _object
+              self
+            : _no_type
+            f
+            (
+            #1
+            _dispatch
+              #1
+              _object
+                self
+              : _no_type
+              g
+              (
+              #1
+              _int
+                1
+              : _no_type
+              )
+            : _no_type
+            )
+          : _no_type
+          f
+          (
+          #1
+          _dispatch
+            #1
+            _object
+              self
+            : _no_type
+            g
+            (
+            #1
+            _dispatch
+              #1
+              _object
+                self
+              : _no_type
+              g
+              (
+              #1
+              _int
+                5
+              : _no_type
+              )
+            : _no_type
+            )
+          : _no_type
+          )
+        : _no_type
+        f
+        (
+        #1
+        _dispatch
+          #1
+          _object
+            self
+          : _no_type
+          g
+          (
+          #1
+          _dispatch
+            #1
+            _object
+              self
+            : _no_type
+            g
+            (
+            #1
+            _dispatch
+              #1
+              _object
+                self
+              : _no_type
+              g
+              (
+              #1
+              _int
+                10
+              : _no_type
+              )
+            : _no_type
+            )
+          : _no_type
+          )
+        : _no_type
+        )
+      : _no_type
+    )

@@ -1,0 +1,228 @@
+#1
+_program
+  #1
+  _class
+    A
+    IO
+    "test_cases/init-default.cl"
+    (
+    #1
+    _attr
+      x
+      Int
+      #1
+      _cond
+        #1
+        _object
+          b
+        : _no_type
+        #1
+        _int
+          1
+        : _no_type
+        #1
+        _neg
+          #1
+          _int
+            1
+          : _no_type
+        : _no_type
+      : _no_type
+    #1
+    _attr
+      b
+      Bool
+      #1
+      _bool
+        1
+      : _no_type
+    #1
+    _attr
+      y
+      Int
+      #1
+      _plus
+        #1
+        _object
+          x
+        : _no_type
+        #1
+        _int
+          3
+        : _no_type
+      : _no_type
+    #1
+    _attr
+      z
+      Int
+      #1
+      _sub
+        #1
+        _object
+          z
+        : _no_type
+        #1
+        _int
+          5
+        : _no_type
+      : _no_type
+    #1
+    _method
+      print_attr
+      Object
+      #1
+      _block
+        #1
+        _dispatch
+          #1
+          _object
+            self
+          : _no_type
+          out_string
+          (
+          #1
+          _string
+            "x: "
+          : _no_type
+          )
+        : _no_type
+        #1
+        _dispatch
+          #1
+          _object
+            self
+          : _no_type
+          out_int
+          (
+          #1
+          _object
+            x
+          : _no_type
+          )
+        : _no_type
+        #1
+        _dispatch
+          #1
+          _object
+            self
+          : _no_type
+          out_string
+          (
+          #1
+          _string
+            "\nb: "
+          : _no_type
+          )
+        : _no_type
+        #1
+        _dispatch
+          #1
+          _object
+            self
+          : _no_type
+          out_string
+          (
+          #1
+          _cond
+            #1
+            _object
+              b
+            : _no_type
+            #1
+            _string
+              "true"
+            : _no_type
+            #1
+            _string
+              "false"
+            : _no_type
+          : _no_type
+          )
+        : _no_type
+        #1
+        _dispatch
+          #1
+          _object
+            self
+          : _no_type
+          out_string
+          (
+          #1
+          _string
+            "\ny: "
+          : _no_type
+          )
+        : _no_type
+        #1
+        _dispatch
+          #1
+          _object
+            self
+          : _no_type
+          out_int
+          (
+          #1
+          _object
+            y
+          : _no_type
+          )
+        : _no_type
+        #1
+        _dispatch
+          #1
+          _object
+            self
+          : _no_type
+          out_string
+          (
+          #1
+          _string
+            "\nz: "
+          : _no_type
+          )
+        : _no_type
+        #1
+        _dispatch
+          #1
+          _object
+            self
+          : _no_type
+          out_int
+          (
+          #1
+          _object
+            z
+          : _no_type
+          )
+        : _no_type
+      : _no_type
+    )
+  #1
+  _class
+    Main
+    Object
+    "test_cases/init-default.cl"
+    (
+    #1
+    _attr
+      a
+      A
+      #1
+      _new
+        A
+      : _no_type
+    #1
+    _method
+      main
+      Object
+      #1
+      _dispatch
+        #1
+        _object
+          a
+        : _no_type
+        print_attr
+        (
+        )
+      : _no_type
+    )

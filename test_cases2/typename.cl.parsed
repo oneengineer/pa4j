@@ -1,0 +1,168 @@
+#1
+_program
+  #1
+  _class
+    Base
+    IO
+    "test_cases/typename.cl"
+    (
+    #1
+    _method
+      identify
+      #1
+      _formal
+        thing
+        Object
+      Object
+      #1
+      _block
+        #1
+        _dispatch
+          #1
+          _object
+            self
+          : _no_type
+          out_string
+          (
+          #1
+          _dispatch
+            #1
+            _object
+              thing
+            : _no_type
+            type_name
+            (
+            )
+          : _no_type
+          )
+        : _no_type
+        #1
+        _dispatch
+          #1
+          _object
+            self
+          : _no_type
+          out_string
+          (
+          #1
+          _string
+            "\n"
+          : _no_type
+          )
+        : _no_type
+      : _no_type
+    #1
+    _method
+      test
+      Object
+      #1
+      _block
+        #1
+        _dispatch
+          #1
+          _object
+            self
+          : _no_type
+          identify
+          (
+          #1
+          _new
+            Base
+          : _no_type
+          )
+        : _no_type
+        #1
+        _dispatch
+          #1
+          _object
+            self
+          : _no_type
+          identify
+          (
+          #1
+          _new
+            Derived
+          : _no_type
+          )
+        : _no_type
+        #1
+        _dispatch
+          #1
+          _object
+            self
+          : _no_type
+          identify
+          (
+          #1
+          _new
+            Main
+          : _no_type
+          )
+        : _no_type
+        #1
+        _let
+          poly
+          Base
+          #1
+          _new
+            Derived
+          : _no_type
+          #1
+          _dispatch
+            #1
+            _object
+              self
+            : _no_type
+            identify
+            (
+            #1
+            _object
+              poly
+            : _no_type
+            )
+          : _no_type
+        : _no_type
+        #1
+        _dispatch
+          #1
+          _object
+            self
+          : _no_type
+          identify
+          (
+          #1
+          _object
+            self
+          : _no_type
+          )
+        : _no_type
+      : _no_type
+    )
+  #1
+  _class
+    Derived
+    Base
+    "test_cases/typename.cl"
+    (
+    )
+  #1
+  _class
+    Main
+    Object
+    "test_cases/typename.cl"
+    (
+    #1
+    _method
+      main
+      Object
+      #1
+      _dispatch
+        #1
+        _new
+          Derived
+        : _no_type
+        test
+        (
+        )
+      : _no_type
+    )

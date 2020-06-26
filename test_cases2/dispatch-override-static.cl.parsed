@@ -1,0 +1,140 @@
+#1
+_program
+  #1
+  _class
+    Base
+    IO
+    "test_cases/dispatch-override-static.cl"
+    (
+    #1
+    _method
+      identify
+      Object
+      #1
+      _dispatch
+        #1
+        _object
+          self
+        : _no_type
+        out_string
+        (
+        #1
+        _string
+          "base\n"
+        : _no_type
+        )
+      : _no_type
+    )
+  #1
+  _class
+    Derived
+    Base
+    "test_cases/dispatch-override-static.cl"
+    (
+    #1
+    _method
+      identify
+      Object
+      #1
+      _dispatch
+        #1
+        _object
+          self
+        : _no_type
+        out_string
+        (
+        #1
+        _string
+          "derived\n"
+        : _no_type
+        )
+      : _no_type
+    )
+  #1
+  _class
+    Main
+    Object
+    "test_cases/dispatch-override-static.cl"
+    (
+    #1
+    _method
+      main
+      Object
+      #1
+      _block
+        #1
+        _let
+          me
+          Base
+          #1
+          _new
+            Base
+          : _no_type
+          #1
+          _static_dispatch
+            #1
+            _object
+              me
+            : _no_type
+            Base
+            identify
+            (
+            )
+          : _no_type
+        : _no_type
+        #1
+        _let
+          me
+          Base
+          #1
+          _new
+            Derived
+          : _no_type
+          #1
+          _static_dispatch
+            #1
+            _object
+              me
+            : _no_type
+            Base
+            identify
+            (
+            )
+          : _no_type
+        : _no_type
+        #1
+        _let
+          me
+          Derived
+          #1
+          _new
+            Derived
+          : _no_type
+          #1
+          _block
+            #1
+            _static_dispatch
+              #1
+              _object
+                me
+              : _no_type
+              Base
+              identify
+              (
+              )
+            : _no_type
+            #1
+            _static_dispatch
+              #1
+              _object
+                me
+              : _no_type
+              Derived
+              identify
+              (
+              )
+            : _no_type
+          : _no_type
+        : _no_type
+      : _no_type
+    )
