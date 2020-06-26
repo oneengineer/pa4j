@@ -451,7 +451,7 @@ class programc extends Program {
         //cenv.DumpIR();
         var error = new BytePointer(1000 * 1000); // Used to retrieve messages from functions
 
-        cenv.DumpIRToFile("out.ll");
+        //cenv.DumpIRToFile("out.ll");
         LLVMVerifyModule(cenv.module, LLVMAbortProcessAction, error);
         cenv.DumpIRToFile("out.ll");
         //cenv.DumpIR();//debug
@@ -1274,35 +1274,37 @@ class cond extends Expression {
         LLVMBasicBlockRef elseBB = LLVMAppendBasicBlock(env.currentFunctionRef, "else_BB");
         LLVMBasicBlockRef endBB = LLVMAppendBasicBlock(env.currentFunctionRef, "endBB");
 
+        var returnType = env.translateType(this.get_type());
+        var resultAddr = LLVMBuildAlloca(env.builder, returnType, "ifelse_r_addr");
+
         this.pred.code(env);
+
         //set pointer to then BB
         var predResult = pred.returnValue;
         LLVMBuildCondBr(env.builder, predResult, thenBB, elseBB);
 
         LLVMPositionBuilderAtEnd(env.builder, thenBB);
         this.then_exp.code(env);
+        LLVMBuildStore(env.builder, then_exp.returnValue, resultAddr);
         LLVMBuildBr(env.builder, endBB); // jmp to end
+
         LLVMPositionBuilderAtEnd(env.builder, elseBB);
         this.else_exp.code(env);
+        LLVMBuildStore(env.builder, else_exp.returnValue, resultAddr);
         LLVMBuildBr(env.builder, endBB); // jmp to end
         LLVMPositionBuilderAtEnd(env.builder, endBB);
 
-        System.out.println("\nthen BB --------- ");
-        env.DumpIR(this.then_exp.returnValue);
-        System.out.println("\nelse BB --------- ");
-        env.DumpIR(this.else_exp.returnValue);
+//        System.out.println("\nthen BB --------- ");
+//        env.DumpIR(this.then_exp.returnValue);
+//        System.out.println("\nelse BB --------- ");
+//        env.DumpIR(this.else_exp.returnValue);
 
-        // insert phi node
-        var returnType = env.translateType(this.get_type());
-        var result_phi = LLVMBuildPhi(env.builder, returnType, "ifelse" );
-        LLVMAddIncoming( result_phi,
-                new PointerPointer( then_exp.returnValue, else_exp.returnValue),
-                new PointerPointer( thenBB, elseBB ),
-                2);
-        this.returnValue = result_phi;
-        System.out.println("\nend BB --------- ");
-        env.DumpIR(result_phi);
-        System.out.println("\n ---- if else end ----- ");
+        var result_r = LLVMBuildLoad(env.builder, resultAddr, "ifelse_r");
+
+        this.returnValue = result_r;
+//        System.out.println("\nend BB --------- ");
+//        env.DumpIR(result_r);
+//        System.out.println("\n ---- if else end ----- ");
     }
 
 }
