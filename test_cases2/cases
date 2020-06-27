@@ -39,7 +39,7 @@ eval-order-args.cl; 1; Checking evaluation order of function args on dispatch
 eval-order-arith.cl; 1; Checking evaluation order of arithmetic expressions
 exp.cl; 1; An exponent function
 fact.cl; 1; A factorial function    DONE
-fibo.cl; 1; A Fibonacci function
+fibo.cl; 1; A Fibonacci function    DONE
 hairyscary.cl; 1; hairy-scary program from examples directory
 init-default.cl; 1; Initialization of arguments for a "new"d object
 init-order-self.cl; 1; Evaluation order of attribute initializers

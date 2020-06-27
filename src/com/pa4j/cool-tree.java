@@ -702,6 +702,7 @@ class method extends Feature {
             item.funParamIdx = i;
             item.name = t.name.str;
             items[i] = item;
+            i += 1;
         }
 
         // create function type
@@ -968,6 +969,13 @@ class assign extends Expression {
         this.set_type( type );
     }
 
+    @Override
+    public void code(CodeGenEnv env) {
+        this.expr.code(env);
+        var valueAddr = env.valueMap.get(this.name.str).value;
+        LLVMBuildStore(env.builder, expr.returnValue, valueAddr);
+        this.returnValue = expr.returnValue;
+    }
 
     public void dump_with_types(PrintStream out, int n) {
         dump_line(out, n);
@@ -1151,12 +1159,12 @@ class dispatch extends Expression {
     @Override
     public void code(CodeGenEnv env) {
         //TODO treat buildin function specially
-
-
+        var functionName = this.name.str;
+        //System.out.println("functionName: "  +  functionName);
 
         //TODO handle self_type and inherit properly
         //expr.code(env);
-
+        var type = env.translateType(this.get_type());
         actual.code(env); // TODO need to check parameter type
 
         var n = actual.getLength();
@@ -1169,22 +1177,39 @@ class dispatch extends Expression {
             i += 1;
         }
 
-        if (this.name.str.equals("out_int")){
-            env.call_out_int(arr[0]);
-            return;
-        }
-
-        if (this.name.str.equals("out_string")){
-            env.call_out_string(arr[0]);
-            return;
-        }
+//        if (this.name.str.equals("out_int")){
+//            env.call_out_int(arr[0]);
+//            return;
+//        }
+//
+//        if (this.name.str.equals("out_string")){
+//            env.call_out_string(arr[0]);
+//            return;
+//        }
 
         // call function
         //TODO use abstract Symbol as map key, instead of string
-        var functionName = this.name.str;
+
         LLVMValueRef fun = env.funMap.get(functionName);
-        this.returnValue = LLVMBuildCall(env.builder, fun,
-                new PointerPointer(arr), n, "ret_r");
+
+        if (fun == null){
+            throw new RuntimeException("Cannot find "+ functionName);
+        }
+
+        //TODO hack out_int return type here
+        if (functionName.equals("out_int") || functionName.equals("out_string")){
+            type = LLVMInt32Type();
+        }
+
+
+        if ( type == env.void_type ) { // void return type
+            LLVMBuildCall(env.builder, fun,
+                    new PointerPointer(arr), n, "");
+        } else {
+            this.returnValue = LLVMBuildCall(env.builder, fun,
+                    new PointerPointer(arr), n, "ret_r");
+        }
+
     }
 
     public void dump_with_types(PrintStream out, int n) {
@@ -1568,6 +1593,17 @@ class let extends Expression {
         this.set_type( body.get_type() );
     }
 
+    @Override
+    public void code(CodeGenEnv env) {
+        //TODO push scope, add value map
+        var type = env.translateType(this.type_decl);
+        LLVMValueRef value_addr = LLVMBuildAlloca(env.builder, type, this.identifier.str);
+        var item = new StoreItem();
+        item.name = this.identifier.str;
+        item.value = value_addr;
+        env.valueMap.put(item.name, item);
+        this.body.code(env);
+    }
 
     public void dump_with_types(PrintStream out, int n) {
         dump_line(out, n);
@@ -2215,7 +2251,10 @@ class string_const extends Expression {
     @Override
     public void code(CodeGenEnv env) {
         var s = this.token.str;
-        this.returnValue = env.global_text(s, s);
+        var temp = env.global_text(s, s);
+        var indices = new PointerPointer(env.const0_64, env.const0_64); //64 bit ints
+        LLVMValueRef converted_p = LLVMConstInBoundsGEP(temp, indices, 2); //TODO
+        this.returnValue = converted_p;
     }
 
     public void dump_with_types(PrintStream out, int n) {

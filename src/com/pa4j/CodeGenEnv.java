@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.bytedeco.llvm.global.LLVM.*;
+import static org.bytedeco.llvm.global.LLVM.LLVMVoidType;
 
 class StoreItem{
     int funParamIdx = -1;
@@ -31,6 +32,8 @@ class CodeGenEnv {
     LLVMValueRef currentFunctionRef;
     Map<String, LLVMValueRef> funMap = new HashMap<>();
 
+    LLVMTypeRef void_type = LLVMVoidType();
+
     Map<String, LLVMValueRef> globalText = new HashMap<>();
 
     //TODO make this stack like,
@@ -38,6 +41,8 @@ class CodeGenEnv {
 
     LLVMValueRef out_int_printf_txt;
     LLVMValueRef out_string_printf_txt;
+    LLVMValueRef const0_64 = LLVMConstInt(LLVMInt64Type(), 0, 1 );
+    LLVMTypeRef char_star = LLVMPointerType( LLVMInt8Type(),0 );
 
     public CodeGenEnv(){
         LLVMInitializeNativeAsmPrinter();
@@ -103,7 +108,11 @@ class CodeGenEnv {
 
         //TODO hack object here
         if (s == TreeConstants.Object_)
-            return LLVMVoidType();
+            return void_type;
+
+        //TODO hack self_type here
+        if (s == TreeConstants.SELF_TYPE)
+            return void_type;
 
         throw new RuntimeException("Do not know how to translate type");
     }
@@ -120,7 +129,6 @@ class CodeGenEnv {
         var theType = LLVMFunctionType( LLVMInt32Type(), new PointerPointer( args ), args.length , 0 );
         LLVMValueRef fun = addFunction(theType, "out_int");
 
-        var const0_64 = LLVMConstInt(LLVMInt64Type(), 0, 1 );
         var indicies = new PointerPointer(const0_64, const0_64); //64 bit ints
         //GEP: get element pointer
         // global variable is a pointer, string is also a point
@@ -137,10 +145,12 @@ class CodeGenEnv {
         var temp = LLVMBuildCall(builder,
                 funMap.get("printf"),params3, 2, "call_printf");
         LLVMBuildRet(builder, temp);
+
+        this.funMap.put("out_int", fun);
     }
 
     private void init_out_string(){
-        var args = new LLVMTypeRef[] { LLVMInt32Type() };
+        var args = new LLVMTypeRef[] { char_star };
         var theType = LLVMFunctionType( LLVMInt32Type(), new PointerPointer( args ), args.length , 0 );
         LLVMValueRef fun = addFunction(theType, "out_string");
 
@@ -161,6 +171,8 @@ class CodeGenEnv {
         var temp = LLVMBuildCall(builder,
                 funMap.get("printf"),params3, 2, "call_printf");
         LLVMBuildRet(builder, temp);
+
+        this.funMap.put("out_string", fun);
     }
 
     public void call_out_int(LLVMValueRef value){
@@ -177,8 +189,7 @@ class CodeGenEnv {
 
 
     private void create_printf(){
-        LLVMTypeRef char_start = LLVMPointerType( LLVMInt8Type(),0 );
-        var args = new LLVMTypeRef[] { char_start };
+        var args = new LLVMTypeRef[] { char_star };
         var theType = LLVMFunctionType( LLVMInt32Type(), new PointerPointer( args ), args.length , 1 );
         var printf = addFunction( theType, "printf" );
         funMap.put("printf", printf);

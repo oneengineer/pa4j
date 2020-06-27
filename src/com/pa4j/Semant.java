@@ -219,7 +219,7 @@ class Semant {
         //var reader1 = new InputStreamReader(new FileInputStream("resource/stringtest.test.parsed"));
         //var reader1 = new InputStreamReader(new FileInputStream("resource/methodnameclash.test.parsed"));
         //var reader1 = new InputStreamReader(new FileInputStream("resource/if.test.parsed"));
-        var reader1 = new InputStreamReader(new FileInputStream("resource/fibo.cl.parsed"));
+        var reader1 = new InputStreamReader(new FileInputStream("resource/assignment-val.cl.parsed"));
 
         //var reader1 = new InputStreamReader( new FileInputStream( "resource\\list.cl.parsed" ));
 
@@ -237,7 +237,7 @@ class Semant {
 
         ((Program) result).semant();
         var writer = new PrintStream( new FileOutputStream("resource/my.assignment.test.parsed"));
-
+        ((Program) result).dump_with_types(writer, 0);
 
         ((Program) result).cgen();
 
@@ -246,7 +246,6 @@ class Semant {
         //((Program) result).dump_with_types(System.out, 0);
 
         // write to File
-        ((Program) result).dump_with_types(writer, 0);
         //((Program)result).dump(System.out, 0);
     }
 }
