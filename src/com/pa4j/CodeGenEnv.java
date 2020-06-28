@@ -33,6 +33,9 @@ class CodeGenEnv {
     Map<String, LLVMValueRef> funMap = new HashMap<>();
 
     LLVMTypeRef void_type = LLVMVoidType();
+    LLVMTypeRef int_type = LLVMInt32Type();
+    LLVMTypeRef bool_type = LLVMInt1Type();
+    LLVMTypeRef pointer_obj_type = LLVMPointerType(void_type, 0);
 
     Map<String, LLVMValueRef> globalText = new HashMap<>();
 
@@ -93,6 +96,25 @@ class CodeGenEnv {
         this.create_printf();
         this.init_out_int();
         this.init_out_string();
+        this.init_abort_function();
+    }
+
+    public void init_abort_function(){
+        var args = new LLVMTypeRef[] { LLVMInt32Type() };
+        var theType = LLVMFunctionType( this.void_type, new PointerPointer( args ), 1 , 0 );
+        LLVMValueRef fun_exit = addFunction(theType, "exit");
+
+        var args2 = new LLVMTypeRef[] {  };
+        var theType2 = LLVMFunctionType( this.void_type, new PointerPointer( args2 ), args2.length , 0 );
+        LLVMValueRef fun_abort = addFunction(theType2, "abort");
+        var BB = LLVMAppendBasicBlock(fun_abort,"function_BB");
+        LLVMPositionBuilderAtEnd(builder, BB);
+        LLVMValueRef c_neg1 = LLVMConstInt(LLVMInt32Type(), -1,1);
+        PointerPointer<LLVMValueRef> params = new PointerPointer( new LLVMValueRef[] {c_neg1} ); // printf("%d", x)
+        LLVMBuildCall(builder, fun_exit, params, 1, "");
+        LLVMBuildRetVoid(builder);
+
+        this.funMap.put("abort", fun_abort);
     }
 
     private void init_global_text(){
@@ -104,17 +126,18 @@ class CodeGenEnv {
 
     public LLVMTypeRef translateType(AbstractSymbol s){
         if (s == TreeConstants.Int)
-            return LLVMInt32Type();
+            return this.int_type;
 
-        //TODO hack object here
+        if (s == TreeConstants.Bool)
+            return this.bool_type; // boolean type
+
         if (s == TreeConstants.Object_)
-            return void_type;
+            return this.pointer_obj_type;
 
         //TODO hack self_type here
-        if (s == TreeConstants.SELF_TYPE)
-            return void_type;
+        return this.pointer_obj_type;
 
-        throw new RuntimeException("Do not know how to translate type");
+        //throw new RuntimeException("Do not know how to translate type");
     }
 
     public void PrintCode(){

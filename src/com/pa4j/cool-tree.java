@@ -250,7 +250,7 @@ abstract class Expression extends TreeNode {
     public LLVMValueRef returnValue;
 
     public void code(CodeGenEnv env){
-        throw new RuntimeException("Not implemented");
+        throw new RuntimeException("Not implemented code function");
     }
 
 }
@@ -689,7 +689,14 @@ class method extends Feature {
         //  1. create function type, register name in env
         //  2. parse body,
 
-        var rtype = env.translateType(this.return_type);
+
+        LLVMTypeRef rtype = null;
+        if ( this.name == TreeConstants.main_meth )
+            rtype = env.void_type;
+        else if ( this.name == TreeConstants.cool_abort )
+            rtype = env.void_type;
+        else
+            rtype = env.translateType(this.return_type);
         var ai = formals.getElements();
         var n = formals.getLength();
         var items = new StoreItem[n];
@@ -1196,9 +1203,12 @@ class dispatch extends Expression {
             throw new RuntimeException("Cannot find "+ functionName);
         }
 
-        //TODO hack out_int return type here
+        //TODO hack out_int,  abort return type here
         if (functionName.equals("out_int") || functionName.equals("out_string")){
-            type = LLVMInt32Type();
+            type = env.int_type;
+        }
+        if (functionName.equals("abort") ){
+            type = env.void_type;
         }
 
 
@@ -2204,6 +2214,13 @@ class bool_const extends Expression {
 
     }
 
+    @Override
+    public void code(CodeGenEnv env) {
+        if (val)
+            this.returnValue = LLVMConstInt(env.bool_type, 1, 0);
+        else
+            this.returnValue = LLVMConstInt(env.bool_type, 0, 0);
+    }
 
     public void dump_with_types(PrintStream out, int n) {
         dump_line(out, n);

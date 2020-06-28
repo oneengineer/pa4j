@@ -213,13 +213,8 @@ class Semant {
 
         // CHANGED basic types inited here
 
-        //var reader1 = new InputStreamReader( new FileInputStream( "W:\\p\\pa4j\\src\\com\\pa4j\\good.cl" ));
-        //var reader1 = new InputStreamReader(new FileInputStream("resource/assignment.test.parsed"));
-        //var reader1 = new InputStreamReader(new FileInputStream("resource/basic.test.parsed"));
-        //var reader1 = new InputStreamReader(new FileInputStream("resource/stringtest.test.parsed"));
-        //var reader1 = new InputStreamReader(new FileInputStream("resource/methodnameclash.test.parsed"));
         //var reader1 = new InputStreamReader(new FileInputStream("resource/if.test.parsed"));
-        var reader1 = new InputStreamReader(new FileInputStream("resource/assignment-val.cl.parsed"));
+        var reader1 = new InputStreamReader(new FileInputStream("resource/abort.cl.parsed"));
 
         //var reader1 = new InputStreamReader( new FileInputStream( "resource\\list.cl.parsed" ));
 
