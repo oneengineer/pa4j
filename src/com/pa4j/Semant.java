@@ -214,7 +214,9 @@ class Semant {
         // CHANGED basic types inited here
 
         //var reader1 = new InputStreamReader(new FileInputStream("resource/if.test.parsed"));
-        var reader1 = new InputStreamReader(new FileInputStream("resource/abort.cl.parsed"));
+        //var reader1 = new InputStreamReader(new FileInputStream("resource/abort.cl.parsed"));
+
+        var reader1 = new InputStreamReader(new FileInputStream("resource/assignment-val.cl.parsed"));
 
         //var reader1 = new InputStreamReader( new FileInputStream( "resource\\list.cl.parsed" ));
 
@@ -234,7 +236,7 @@ class Semant {
         var writer = new PrintStream( new FileOutputStream("resource/my.assignment.test.parsed"));
         ((Program) result).dump_with_types(writer, 0);
 
-        ((Program) result).cgen();
+        ((Program) result).cgen( ((programc) result).typeEnv);
 
 
         // write to STDOUT

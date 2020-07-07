@@ -1,5 +1,10 @@
 package com.pa4j;
 
+import org.bytedeco.javacpp.BytePointer;
+import org.bytedeco.llvm.LLVM.LLVMTypeRef;
+import static org.bytedeco.llvm.global.LLVM.*;
+import static org.bytedeco.llvm.global.LLVM.LLVMVoidType;
+
 import java.util.*;
 
 
@@ -29,6 +34,11 @@ public class TypeCheckEnv {
 
     public void exitCall(){
         callerStack.pop();
+    }
+
+    public static String TypeToString(LLVMTypeRef type){
+        BytePointer x = LLVMPrintTypeToString(type);
+        return x.getString();
     }
 
     protected HashMap<AbstractSymbol, class_c> symbol_class = new HashMap<>();

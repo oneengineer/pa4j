@@ -21,7 +21,7 @@ maxscore = 63
 abort.cl; 1; Calling abort() method     DONE
 assignment-val.cl; 1; Evaluating assignment expressions     DONE
 basic-init.cl; 1; Default initial values of baisc classes 
-basicequality.cl; 1; Simple equality tests
+basicequality.cl; 1; Simple equality tests          DONE
 bigexpr.cl; 1; A large arithmetic expression        DONE
 bool.cl; 1; Boolean objects
 calls.cl; 1; Method calls

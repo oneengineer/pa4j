@@ -29,13 +29,21 @@ class CodeGenEnv {
     LLVMBuilderRef builder;
     LLVMModuleRef module;
 
+    LLVMValueRef self_pointer;
+    class_c self_class;
+
+    ClassManager classManager;
+
     LLVMValueRef currentFunctionRef;
     Map<String, LLVMValueRef> funMap = new HashMap<>();
+
+    SymbolTable symbolToMemory = new SymbolTable(); //AbstractSymbol map to object
 
     LLVMTypeRef void_type = LLVMVoidType();
     LLVMTypeRef int_type = LLVMInt32Type();
     LLVMTypeRef bool_type = LLVMInt1Type();
-    LLVMTypeRef pointer_obj_type = LLVMPointerType(void_type, 0);
+    LLVMTypeRef char_type = LLVMInt8Type();
+
 
     Map<String, LLVMValueRef> globalText = new HashMap<>();
 
@@ -46,6 +54,11 @@ class CodeGenEnv {
     LLVMValueRef out_string_printf_txt;
     LLVMValueRef const0_64 = LLVMConstInt(LLVMInt64Type(), 0, 1 );
     LLVMTypeRef char_star = LLVMPointerType( LLVMInt8Type(),0 );
+    LLVMTypeRef char_star_star = LLVMPointerType( char_star,0 );
+
+
+    LLVMTypeRef pointer_obj_type = this.char_star;
+    LLVMValueRef null_ptr = LLVMConstPointerNull( this.char_star );
 
     public CodeGenEnv(){
         LLVMInitializeNativeAsmPrinter();
@@ -73,9 +86,25 @@ class CodeGenEnv {
         }
     }
 
+    /*
+    * push a map to symbol table scope
+    * */
+    public void PushVars(Map<AbstractSymbol, TypeItem> classTypeMap ){
+        for (var i: classTypeMap.entrySet()){
+            this.symbolToMemory.addId(i.getKey(), i.getValue());
+        }
+    }
+
     public void DumpIR(LLVMValueRef v){
         LLVMDumpValue(v);
     }
+
+    public void DumpIR(LLVMTypeRef v){
+        var s = LLVMPrintTypeToString(v);
+        System.err.println(s.getString());
+    }
+
+
 
     public LLVMValueRef addFunction(LLVMTypeRef fun, String name){
         return LLVMAddFunction(module, name, fun);
@@ -97,6 +126,8 @@ class CodeGenEnv {
         this.init_out_int();
         this.init_out_string();
         this.init_abort_function();
+        this.init_string_function();
+        this.init_copy_function();
     }
 
     public void init_abort_function(){
@@ -105,16 +136,63 @@ class CodeGenEnv {
         LLVMValueRef fun_exit = addFunction(theType, "exit");
 
         var args2 = new LLVMTypeRef[] {  };
-        var theType2 = LLVMFunctionType( this.void_type, new PointerPointer( args2 ), args2.length , 0 );
+        var theType2 = LLVMFunctionType( this.pointer_obj_type, new PointerPointer( args2 ), args2.length , 0 );
         LLVMValueRef fun_abort = addFunction(theType2, "abort");
         var BB = LLVMAppendBasicBlock(fun_abort,"function_BB");
         LLVMPositionBuilderAtEnd(builder, BB);
         LLVMValueRef c_neg1 = LLVMConstInt(LLVMInt32Type(), -1,1);
         PointerPointer<LLVMValueRef> params = new PointerPointer( new LLVMValueRef[] {c_neg1} ); // printf("%d", x)
         LLVMBuildCall(builder, fun_exit, params, 1, "");
-        LLVMBuildRetVoid(builder);
+        LLVMBuildRet(builder, this.null_ptr);
+        //LLVMBuildRetVoid(builder);
 
         this.funMap.put("abort", fun_abort);
+    }
+
+    /*
+    * strlen, and strcpy
+    * char * strcpy ( char * destination, const char * source );
+    * size_t strlen ( const char * str );
+     * */
+    public void init_string_function(){
+        var args = new LLVMTypeRef[] { this.char_star, this.char_star };
+        var theType = LLVMFunctionType( this.char_star, new PointerPointer( args ), args.length , 0 );
+        LLVMValueRef strcpy = addFunction(theType, "strcpy");
+        this.funMap.put("strcpy", strcpy);
+
+        var args2 = new LLVMTypeRef[] { this.char_star };
+        var theType2 = LLVMFunctionType( this.int_type, new PointerPointer( args2 ), args2.length , 0 );
+        LLVMValueRef strlen = addFunction(theType2, "strlen");
+        this.funMap.put("strlen", strlen);
+    }
+
+    public void init_copy_function() {
+        // allocate a piece of memory, need to record length for string.
+        // call strlen and then all strcpy
+
+        var args = new LLVMTypeRef[] { this.char_star };
+        var theType = LLVMFunctionType( this.char_star, new PointerPointer( args ), args.length , 0 );
+        LLVMValueRef fun = addFunction(theType, "copy");
+        var bb = LLVMAppendBasicBlock(fun,"function_BB");
+        LLVMPositionBuilderAtEnd(builder, bb);
+
+        var strlen = funMap.get("strlen");
+        var strcpy = funMap.get("strcpy");
+
+        var p1 = LLVMGetParam(fun,0);
+        var params1 = new PointerPointer(1).put(p1);
+        var len_r = LLVMBuildCall(builder, strlen, params1, 1, "len_r");
+        // alloca memory
+        var c1 = LLVMConstInt(this.int_type, 1, 1);
+        var len_r2 = LLVMBuildAdd(builder, len_r, c1, "len_r2"); // len += 1
+        var result_p = LLVMBuildArrayMalloc(builder, char_type, len_r2,"result_p");
+
+        // call strcpy
+        // TODO maybe need type conversion
+        var params2 = new PointerPointer(2).put(0, p1).put(1, result_p);
+        LLVMBuildCall(builder, strcpy, params2,2 ,""); // no need return value
+        LLVMBuildRet(builder, result_p); // return allocated pointer
+        this.funMap.put("copy", fun);
     }
 
     private void init_global_text(){

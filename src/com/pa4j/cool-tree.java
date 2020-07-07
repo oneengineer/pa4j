@@ -30,7 +30,7 @@ abstract class Program extends TreeNode {
 
     public abstract void semant();
 
-    public abstract void cgen();
+    public abstract void cgen(TypeCheckEnv env);
 
 }
 
@@ -356,6 +356,7 @@ class Cases extends ListNode {
  */
 class programc extends Program {
     protected Classes classes;
+    TypeCheckEnv typeEnv;
 
     /**
      * Creates "programc" AST node.
@@ -429,7 +430,7 @@ class programc extends Program {
         env.parseStage = 2; // parse 2 stage
         env.classTable.cls.semant(env);
 
-
+        typeEnv = env;
         /* some semantic analysis code may go here */
 
         if (classTable.errors()) {
@@ -442,16 +443,50 @@ class programc extends Program {
     /*
     * generate code
     * */
-    public void cgen(){
+    public void cgen(TypeCheckEnv env){
         // initialize code env
-        var cenv =  new CodeGenEnv();
-        cenv.init();
-        classes.code(cenv);
 
+        var class_i = classes.getElements().asIterator();
+        var cenv =  new CodeGenEnv();
+        var m = new ClassManager(env, cenv);
+        cenv.classManager = m;
+        cenv.init();
+
+        //create function shapes
+        while (class_i.hasNext()){
+            var c = (class_c)class_i.next();
+            m.analyzeClass(c);
+
+        }
+        //debug
+        //cenv.DumpIRToFile("out_bv.ll"); //DEBUG GEN
+
+        cenv.symbolToMemory.enterScope(); // initial scope
+        cenv.PushVars( m.symbolToType );
+
+        //create constructor function body
+        class_i = classes.getElements().asIterator();
+        while (class_i.hasNext()){
+            var c = (class_c)class_i.next();
+            var temp_fun = m.CreateConstructor(c);
+            // debug each constructor
+            System.out.println("-- debug "  + c.getName() + "--");
+            cenv.DumpIR(temp_fun);
+        }
+
+        class_i = classes.getElements().asIterator();
+        while (class_i.hasNext()){
+            var c = (class_c)class_i.next();
+            cenv.self_class = c;
+            c.code(cenv);
+        }
+
+
+        // TODO create other function body
         //cenv.DumpIR();
         var error = new BytePointer(1000 * 1000); // Used to retrieve messages from functions
 
-        //cenv.DumpIRToFile("out.ll");
+        cenv.DumpIRToFile("out_bv.ll"); //DEBUG GEN
         LLVMVerifyModule(cenv.module, LLVMAbortProcessAction, error);
         cenv.DumpIRToFile("out.ll");
         //cenv.DumpIR();//debug
@@ -683,6 +718,45 @@ class method extends Feature {
 
     }
 
+    public LLVMTypeRef code_type(CodeGenEnv env){
+        //TODO
+        // return the type of function
+        var ai = formals.getElements();
+        var n = formals.getLength();
+        var items = new StoreItem[n];
+        var arr = new LLVMTypeRef[ n ];
+        int i = 0;
+        while (ai.hasMoreElements()){
+            var t = (formalc)ai.nextElement();
+            arr[i] = env.translateType(t.type_decl);
+            var item = new StoreItem();
+            item.funParamIdx = i;
+            item.name = t.name.str;
+            items[i] = item;
+            i += 1;
+        }
+        LLVMTypeRef rtype = null;
+        if ( this.name == TreeConstants.main_meth )
+            rtype = env.void_type;
+        else if ( this.name == TreeConstants.cool_abort )
+            rtype = env.void_type;
+        else
+            rtype = env.translateType(this.return_type);
+        LLVMTypeRef funtype = LLVMFunctionType(rtype, new PointerPointer(arr), n, 0);
+
+        return funtype;
+    }
+
+    //call initialize class in main function
+    private void code_main_class(CodeGenEnv env){
+        //TODO call new function and set self_pointer in env for the class
+        class_c c = env.self_class;
+        var citem = env.classManager.classTypeMap.get(c.name);
+        var t = new PointerPointer(0);
+        LLVMValueRef result_p = LLVMBuildCall(env.builder, citem.constructorFun, t, 0, c.name.str + "_ptr");// return a pointer
+        env.self_pointer = result_p;
+    }
+
     @Override
     public void code(CodeGenEnv env) {
         //TODO dump a function
@@ -727,6 +801,11 @@ class method extends Feature {
         env.currentFunctionRef = fun;
         var BB = LLVMAppendBasicBlock(fun, "function_BB");
         LLVMPositionBuilderAtEnd(env.builder, BB);
+
+        if (this.name == TreeConstants.main_meth){
+            this.code_main_class(env);
+        }
+
         this.expr.code(env);
 
         if (!this.name.str.equals("main")){
@@ -734,7 +813,6 @@ class method extends Feature {
         } else {
             LLVMBuildRetVoid(env.builder);
         }
-
 
         //env.DumpIR();
     }
@@ -806,6 +884,16 @@ class attr extends Feature {
         env.symTable.addId(name, type_decl);
     }
 
+    public LLVMTypeRef code_type(CodeGenEnv env) {
+        LLVMTypeRef typeRef = env.translateType(this.type_decl);
+        return typeRef;
+    }
+
+    @Override
+    public void code(CodeGenEnv env) {
+        //TODO
+        super.code(env);
+    }
 
     public void dump_with_types(PrintStream out, int n) {
         dump_line(out, n);
@@ -1176,8 +1264,36 @@ class dispatch extends Expression {
 
         var n = actual.getLength();
         var ai = actual.getElements();
+
+        boolean contains_expr_pointer = true;
+        var buildin_functions = new HashSet<String>();
+        buildin_functions.add("out_int");
+        buildin_functions.add("out_string");
+        buildin_functions.add("abort");
+        buildin_functions.add("main");
+
+        if (buildin_functions.contains(functionName))
+            contains_expr_pointer = false;
+
+        if (contains_expr_pointer){
+            n += 1;
+        }
+
         var arr = new LLVMValueRef[n];
         var i = 0;
+        if (contains_expr_pointer){
+            LLVMValueRef ref;
+            if ( expr instanceof object && ((object)expr).name == TreeConstants.self ){
+                ref = env.self_pointer; // this pointer
+            } else{
+                expr.code(env);
+                ref = expr.returnValue;
+            }
+            // convert it to char *
+            var ref2 = LLVMBuildBitCast(env.builder, ref, env.char_star, "converted_type");
+            arr[i] = ref2;
+            i +=1;
+        }
         while (ai.hasMoreElements()){
             var expr = (Expression)ai.nextElement();
             arr[i] = expr.returnValue;
@@ -1207,10 +1323,6 @@ class dispatch extends Expression {
         if (functionName.equals("out_int") || functionName.equals("out_string")){
             type = env.int_type;
         }
-        if (functionName.equals("abort") ){
-            type = env.void_type;
-        }
-
 
         if ( type == env.void_type ) { // void return type
             LLVMBuildCall(env.builder, fun,
@@ -1312,6 +1424,10 @@ class cond extends Expression {
         var returnType = env.translateType(this.get_type());
         var resultAddr = LLVMBuildAlloca(env.builder, returnType, "ifelse_r_addr");
 
+        var this_type = env.translateType( this.get_type() );
+        var then_type = env.translateType( then_exp.get_type() );
+        var else_type = env.translateType( else_exp.get_type() );
+
         this.pred.code(env);
 
         //set pointer to then BB
@@ -1320,12 +1436,25 @@ class cond extends Expression {
 
         LLVMPositionBuilderAtEnd(env.builder, thenBB);
         this.then_exp.code(env);
-        LLVMBuildStore(env.builder, then_exp.returnValue, resultAddr);
+        //type conversion if type is different
+        if (this_type != then_type){
+            var temp = LLVMBuildBitCast(env.builder, then_exp.returnValue, this_type, "converted");
+            LLVMBuildStore(env.builder, temp, resultAddr);
+        } else
+            LLVMBuildStore(env.builder, then_exp.returnValue, resultAddr);
+
+
         LLVMBuildBr(env.builder, endBB); // jmp to end
 
         LLVMPositionBuilderAtEnd(env.builder, elseBB);
         this.else_exp.code(env);
-        LLVMBuildStore(env.builder, else_exp.returnValue, resultAddr);
+        //type conversion if type is different
+        if (this_type != else_type){
+            var temp = LLVMBuildBitCast(env.builder, else_exp.returnValue, this_type, "converted");
+            LLVMBuildStore(env.builder, temp, resultAddr);
+        } else
+            LLVMBuildStore(env.builder, else_exp.returnValue, resultAddr);
+
         LLVMBuildBr(env.builder, endBB); // jmp to end
         LLVMPositionBuilderAtEnd(env.builder, endBB);
 
@@ -1598,6 +1727,7 @@ class let extends Expression {
         }
         env.symTable.enterScope();
         env.symTable.addId(identifier, type_);
+
         body.semant(env);
         env.symTable.exitScope();
         this.set_type( body.get_type() );
