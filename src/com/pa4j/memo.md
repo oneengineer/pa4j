@@ -55,3 +55,6 @@ if expr then
 else go to while start
 ```
  
+# required libs
+org.bytedeco:llvm-platform:10.0.0-1.5.3
+edu.princeton.cup:java-cup:10k
