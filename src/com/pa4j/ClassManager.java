@@ -1,6 +1,5 @@
 package com.pa4j;
 
-import org.bytedeco.javacpp.BytePointer;
 import org.bytedeco.javacpp.PointerPointer;
 import org.bytedeco.llvm.LLVM.*;
 
@@ -45,51 +44,47 @@ class ClassManager {
         buildin_functions.add("copy");
     }
 
-    public ArrayList<TypeItem> dumpAttrs(class_c c){
-        ArrayList<TypeItem> arr = new ArrayList<>();
+    public ArrayList<AttrItem> dumpAttrs(class_c c, VirtualTable vt){
+        ArrayList<AttrItem> arr = new ArrayList<>();
         var i = c.features.getElements().asIterator();
         while (i.hasNext()){
             TreeNode a = (TreeNode)i.next();
-            TypeItem item = new TypeItem();
             if (a instanceof method) {
+                FuncItem item = new FuncItem();
+
                 var b = (method)a;
                 //skip buildin method
                 if ( buildin_functions.contains(b.name.str) ){
                     continue;
                 }
                 // record name only
-                item.funTypeRef = b.code_type(this.cenv);
-                item.typeRef = cenv.char_star_star; // double pointer for store function pointer
-                item.isAttr = false;
+                item.typeRef = b.code_type(this.cenv);
                 item.funSymbol = b.name;
-
+                vt.addAndReplace(item);
             } else if (a instanceof attr){
+                AttrItem item = new AttrItem();
                 var b = (attr)a;
                 item.typeRef = b.code_type(this.cenv);
-                item.isAttr = true;
+                arr.add(item);
             }
             else {
                 throw new RuntimeException("impossible here");
             }
-            arr.add(item);
+
         }
         return arr;
     }
 
-    private LLVMTypeRef createStruct(List<TypeItem> arr){
-        var pp = new PointerPointer<LLVMTypeRef>(arr.size());
-        int j = 0;
-        for (var i:arr){
-            pp.put(j, i.typeRef);
-            j += 1;
-        }
-        LLVMTypeRef newtype = LLVMStructType( pp, arr.size(), 0);
-        return newtype;
-    }
 
+
+    /*
+    * gen Attr Table,  virtual Table
+    *
+    * */
     public void analyzeClass(class_c c){
 
         var citem = new ClassItem();
+        citem.virtualTable = new VirtualTable();
         classTypeMap.put(c.name, citem);
 
         var iter = c.features.getElements();
@@ -101,16 +96,16 @@ class ClassManager {
         List<AbstractSymbol> parents = env.inheritChain(c.name);
         // parents: super class --> sub-class,  Object --> c
         // build array of attrs and methods
-        ArrayList<TypeItem> arr = new ArrayList<>();
+        ArrayList<AttrItem> arr = new ArrayList<>();
         for (var p:parents){
             class_c c2 = env.findClass(p);
-            var temp = this.dumpAttrs(c2);
+            var temp = this.dumpAttrs(c2, citem.virtualTable);
             // only add attribute here, but collect method's names
             // TODO assume attr's name won't overlap
             arr.addAll(temp);
         }
-        var attrs = new ArrayList<TypeItem>();
-        var methods = new HashMap<AbstractSymbol, TypeItem>();
+        var attrs = new ArrayList<AttrItem>();
+        var methods = new HashMap<AbstractSymbol, AttrItem>();
         for (var i:arr){
             if (i.isAttr){
                 attrs.add(i);
@@ -149,7 +144,7 @@ class ClassManager {
 
     Map<AbstractSymbol, ClassItem> classTypeMap = new HashMap<>();
 
-    Map<AbstractSymbol, TypeItem> symbolToType = new HashMap<>();
+    Map<AbstractSymbol, AttrItem> symbolToType = new HashMap<>(); // TODO no need to use
 
     public String FunctionName(class_c c, method m){
         return c.name.str + "___" + m.name.str;
@@ -261,7 +256,7 @@ class ClassManager {
                 LLVMValueRef field_p = LLVMBuildGEP(cenv.builder,
                         this_p, pp,2,"pointer_" + b.name.str );
 
-                TypeItem item = citem.classMethodMap.get(b.name);
+                AttrItem item = citem.classMethodMap.get(b.name);
                 var fun_p = LLVMBuildBitCast(cenv.builder,
                         item.funRef,
                         item.funTypeRef,
@@ -296,22 +291,138 @@ class ClassManager {
 
 }
 
-class TypeItem{
+class AttrItem {
     LLVMTypeRef typeRef;
-    LLVMTypeRef funTypeRef;
+    int storeIdx = -1;
+    String name;
+    AbstractSymbol attrSymbol; // function reference
+}
+
+class FuncItem{
+    LLVMTypeRef typeRef;
     LLVMValueRef funRef; // function reference
     String funName; // function reference
     AbstractSymbol funSymbol; // function reference
+    class_c class_; // indicate which class's method
     int storeIdx = -1;
-    boolean isAttr;
+}
 
+class AttrTable{
+    ArrayList<AttrItem> members = new ArrayList<>(); // has to be all function type
+
+    Map<AbstractSymbol, Integer> classAttrMap = new HashMap<>();
+
+    int findAttrIdx(AbstractSymbol name){
+        if (!classAttrMap.containsKey(name))
+            throw new RuntimeException("cannot find attr " + name.str);
+        return classAttrMap.get(name);
+    }
+
+    AttrItem findAttr(AbstractSymbol name){
+        var i = findAttrIdx(name);
+        return members.get(i);
+    }
+
+    void init_tag_vpointer(){
+        AttrItem item0 = new AttrItem();
+        item0.typeRef = CodeGenEnv.int_type;
+        item0.name = "classTag";
+        members.add(item0);
+
+        AttrItem item1= new AttrItem();
+        item1.typeRef = CodeGenEnv.char_star;
+        item1.name = "vt_pointer";// virtual table pointer
+        members.add(item1);
+    }
+
+    void assignIndices(){
+        int j = 0;
+        for (var i: members){
+            i.storeIdx = j;
+            j += 1;
+            classAttrMap.put( i.attrSymbol, i.storeIdx );
+        }
+    }
+
+    LLVMTypeRef createStruct(){
+        var pp = new PointerPointer<LLVMTypeRef>(members.size());
+        int j = 0;
+        for (var i:members){
+            pp.put(j, i.typeRef);
+            j += 1;
+        }
+        LLVMTypeRef newtype = LLVMStructType( pp, members.size(), 0);
+        return newtype;
+    }
+}
+
+class VirtualTable{
+    class_c class_;
+    ArrayList<FuncItem> members = new ArrayList<>(); // has to be all function type
+    // members' order has to follow from object to current order
+
+    void addAndReplace(FuncItem f){
+        // if exist replace
+        if (classMethodMap.containsKey(f.funSymbol)){
+            var old_f_idx = findMethod(f.funSymbol);
+            f.storeIdx = old_f_idx;
+            members.set(old_f_idx, f);
+        } else {
+            f.storeIdx = members.size();
+            members.add(f);
+        }
+    }
+
+    // function symbol to position in the table
+    Map<AbstractSymbol, Integer> classMethodMap = new HashMap<>();
+
+    int findMethod(AbstractSymbol name){
+        if (classMethodMap.containsKey(name)){
+            var x = classMethodMap.get(name);
+            return x;
+        }
+        else
+            throw new RuntimeException("Cannot find method" + name.str);
+    }
+
+    int findMethod(method m){
+        if (classMethodMap.containsKey(m.name)){
+            var x = classMethodMap.get(m.name);
+            return x;
+        }
+        else
+            throw new RuntimeException("Cannot find method" + m.name.str);
+    }
+
+    LLVMTypeRef tableType(){
+        return LLVMArrayType( CodeGenEnv.char_star, members.size());
+    }
+
+    /*
+    * return the global pointer array
+    * */
+    LLVMValueRef createTableArray(CodeGenEnv env){
+        var type = tableType();
+        var tb = LLVMAddGlobal(env.module, type, "VT_" + class_.name.str);
+        var pointers = new PointerPointer<LLVMValueRef>( members.size() );
+        int j = 0;
+        for (var i:members){
+            var v = i.funRef;
+            // convert to char *
+            var v2 = LLVMConstBitCast(v, env.char_star);
+            pointers.put(j, v2);
+            j += 1;
+        }
+        var const_arr = LLVMConstArray(CodeGenEnv.char_star, pointers , members.size());
+        LLVMSetInitializer(tb, const_arr);
+        return tb;
+    }
 }
 
 class ClassItem{
-    LLVMTypeRef typeRef; //
+    LLVMTypeRef typeRef;
     LLVMValueRef constructorFun;
     LLVMValueRef copyFun;
-    ArrayList<TypeItem> members;
-    Map<AbstractSymbol, TypeItem> classMethodMap = new HashMap<>();
+    VirtualTable virtualTable;
 }
 

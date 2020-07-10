@@ -3,9 +3,7 @@ package com.pa4j;
 import org.bytedeco.javacpp.PointerPointer;
 import org.bytedeco.llvm.LLVM.LLVMBuilderRef;
 import org.bytedeco.llvm.LLVM.*;
-import org.bytedeco.llvm.global.LLVM.*;
 
-import java.lang.reflect.Array;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
@@ -39,11 +37,13 @@ class CodeGenEnv {
 
     SymbolTable symbolToMemory = new SymbolTable(); //AbstractSymbol map to object
 
-    LLVMTypeRef void_type = LLVMVoidType();
-    LLVMTypeRef int_type = LLVMInt32Type();
-    LLVMTypeRef bool_type = LLVMInt1Type();
-    LLVMTypeRef char_type = LLVMInt8Type();
-
+    static LLVMTypeRef void_type = LLVMVoidType();
+    static LLVMTypeRef int_type = LLVMInt32Type();
+    static LLVMTypeRef bool_type = LLVMInt1Type();
+    static LLVMTypeRef char_type = LLVMInt8Type();
+    static LLVMValueRef const0_64 = LLVMConstInt(LLVMInt64Type(), 0, 1 );
+    static LLVMTypeRef char_star = LLVMPointerType( LLVMInt8Type(),0 );
+    static LLVMTypeRef char_star_star = LLVMPointerType( char_star,0 );
 
     Map<String, LLVMValueRef> globalText = new HashMap<>();
 
@@ -52,9 +52,8 @@ class CodeGenEnv {
 
     LLVMValueRef out_int_printf_txt;
     LLVMValueRef out_string_printf_txt;
-    LLVMValueRef const0_64 = LLVMConstInt(LLVMInt64Type(), 0, 1 );
-    LLVMTypeRef char_star = LLVMPointerType( LLVMInt8Type(),0 );
-    LLVMTypeRef char_star_star = LLVMPointerType( char_star,0 );
+
+
 
 
     LLVMTypeRef pointer_obj_type = this.char_star;
@@ -89,7 +88,7 @@ class CodeGenEnv {
     /*
     * push a map to symbol table scope
     * */
-    public void PushVars(Map<AbstractSymbol, TypeItem> classTypeMap ){
+    public void PushVars(Map<AbstractSymbol, AttrItem> classTypeMap ){
         for (var i: classTypeMap.entrySet()){
             this.symbolToMemory.addId(i.getKey(), i.getValue());
         }
