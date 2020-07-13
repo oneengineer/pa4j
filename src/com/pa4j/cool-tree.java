@@ -6,8 +6,6 @@ package com.pa4j;// -*- mode: java -*-
 //
 //////////////////////////////////////////////////////////
 
-import com.sun.source.tree.Tree;
-
 import java.util.*;
 import java.io.PrintStream;
 import java.util.Vector;
@@ -15,7 +13,7 @@ import java.util.Vector;
 import org.bytedeco.javacpp.BytePointer;
 import org.bytedeco.javacpp.PointerPointer;
 import org.bytedeco.llvm.LLVM.*;
-import org.bytedeco.llvm.global.LLVM.*;
+
 import static org.bytedeco.llvm.global.LLVM.*;
 
 /**
@@ -455,14 +453,14 @@ class programc extends Program {
         //create function shapes
         while (class_i.hasNext()){
             var c = (class_c)class_i.next();
-            m.analyzeClass(c);
+            m.analyzeClass_pass1(c);
 
         }
         //debug
         //cenv.DumpIRToFile("out_bv.ll"); //DEBUG GEN
 
         cenv.symbolToMemory.enterScope(); // initial scope
-        cenv.PushVars( m.symbolToType );
+        //cenv.PushVars(  ); what to push??
 
         //create constructor function body
         class_i = classes.getElements().asIterator();
@@ -719,7 +717,7 @@ class method extends Feature {
     }
 
     public LLVMTypeRef code_type(CodeGenEnv env){
-        //TODO
+        //TODO remove this
         // return the type of function
         var ai = formals.getElements();
         var n = formals.getLength();
