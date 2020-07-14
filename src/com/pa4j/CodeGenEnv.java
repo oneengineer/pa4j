@@ -59,6 +59,12 @@ class CodeGenEnv {
     LLVMTypeRef pointer_obj_type = this.char_star;
     LLVMValueRef null_ptr = LLVMConstPointerNull( this.char_star );
 
+
+    LLVMValueRef INT0;
+    LLVMValueRef BOOLFALSE;
+    LLVMValueRef STRING_EMPTY;
+    LLVMValueRef OBJ_NULL;
+
     public CodeGenEnv(){
         LLVMInitializeNativeAsmPrinter();
         LLVMInitializeNativeAsmParser();
@@ -67,6 +73,11 @@ class CodeGenEnv {
 
         module = LLVMModuleCreateWithName("mymodule");
         builder = LLVMCreateBuilder();
+
+        INT0 = LLVMConstInt(this.int_type, 0, 0);
+        BOOLFALSE = LLVMConstInt(this.bool_type, 0, 0);
+        STRING_EMPTY = this.global_text("", "STRING_EMPTY");
+        OBJ_NULL = this.null_ptr;
     }
 
     public void DumpIR(){
