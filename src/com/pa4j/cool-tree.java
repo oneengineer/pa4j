@@ -450,17 +450,30 @@ class programc extends Program {
         cenv.classManager = m;
         cenv.init();
 
+        cenv.classManager.init_basic_class(cenv);
+
         //create function shapes
         while (class_i.hasNext()){
             var c = (class_c)class_i.next();
             m.analyzeClass_pass1(c);
-
         }
+
+        class_i = classes.getElements().asIterator();
+        while (class_i.hasNext()){
+            var c = (class_c)class_i.next();
+            m.analyzeClass_pass2(c);
+
+            //debug class
+            if (!m.buildin_class.contains(c.name))
+                m.classTypeMap.get(c.name).dumpIR_debug(cenv);
+        }
+
         //debug
         //cenv.DumpIRToFile("out_bv.ll"); //DEBUG GEN
 
-        cenv.symbolToMemory.enterScope(); // initial scope
+        //cenv.symbolToMemory.enterScope(); // initial scope
         //cenv.PushVars(  ); what to push??
+        //TODO here
 
         //create constructor function body
         class_i = classes.getElements().asIterator();
@@ -472,11 +485,16 @@ class programc extends Program {
             cenv.DumpIR(temp_fun);
         }
 
-        class_i = classes.getElements().asIterator();
+//        class_i = classes.getElements().asIterator();
+//        while (class_i.hasNext()){
+//            var c = (class_c)class_i.next();
+//            cenv.self_class = c;
+//            c.code(cenv);
+//        }
+
         while (class_i.hasNext()){
             var c = (class_c)class_i.next();
-            cenv.self_class = c;
-            c.code(cenv);
+            m.analyzeClass_pass3(c);
         }
 
 
@@ -758,60 +776,54 @@ class method extends Feature {
     @Override
     public void code(CodeGenEnv env) {
         //TODO dump a function
-        //  1. create function type, register name in env
-        //  2. parse body,
-
-
-        LLVMTypeRef rtype = null;
-        if ( this.name == TreeConstants.main_meth )
-            rtype = env.void_type;
-        else if ( this.name == TreeConstants.cool_abort )
-            rtype = env.void_type;
-        else
-            rtype = env.translateType(this.return_type);
-        var ai = formals.getElements();
-        var n = formals.getLength();
-        var items = new StoreItem[n];
-        var arr = new LLVMTypeRef[ n ];
-        int i = 0;
-        while (ai.hasMoreElements()){
-            var t = (formalc)ai.nextElement();
-            arr[i] = env.translateType(t.type_decl);
-            var item = new StoreItem();
-            item.funParamIdx = i;
-            item.name = t.name.str;
-            items[i] = item;
-            i += 1;
-        }
-
-        // create function type
-        LLVMTypeRef funtype = LLVMFunctionType(rtype, new PointerPointer(arr), n, 0);
-        // register function
-        LLVMValueRef fun = env.addFunction(funtype, this.name.str);
-
-        // register parameters into env
-        for (var item: items)
-            env.valueMap.put( item.name, item );
-        // register this function
-        // TODO use 2 pass, 1st register function, second generate code
-        env.funMap.put( this.name.str, fun );
-        // fun is the BB of this function
-        env.currentFunctionRef = fun;
-        var BB = LLVMAppendBasicBlock(fun, "function_BB");
-        LLVMPositionBuilderAtEnd(env.builder, BB);
+        //  1. function's ref in stored in env's currentFunctionRef
+        //  2. parse body, function parameters has to be stored at a location,
+        //     so that they can be handle in a uniform way
 
         if (this.name == TreeConstants.main_meth){
             this.code_main_class(env);
+            return;
         }
+
+
+        env.symbolToMemory.enterScope();
+
+        var fun = env.currentFunctionRef;
+
+        var ai = formals.getElements();
+        var n = formals.getLength();
+        var items = new StoreItem[n];
+        int i = 0;
+        // first one is this pointer
+        i += 1;
+        while (ai.hasMoreElements()){
+            var t = (formalc)ai.nextElement();
+            var item = new StoreItem();
+            item.funParamIdx = i;
+            item.name = t.name.str;
+            item.symbol = t.name;
+            items[i] = item;
+            env.symbolToMemory.addId(item.symbol, item); // push to scope
+
+            i += 1;
+        }
+
+
+        //TODO
+        // do not create function type,
+        // assume build position is set, start to emit code directly !!!!
+
+        // register this function
+        // fun is the BB of this function
+        var BB = LLVMAppendBasicBlock(fun, "function_BB");
+        LLVMPositionBuilderAtEnd(env.builder, BB);
+
 
         this.expr.code(env);
 
-        if (!this.name.str.equals("main")){
-            LLVMBuildRet(env.builder, this.expr.returnValue);
-        } else {
-            LLVMBuildRetVoid(env.builder);
-        }
+        LLVMBuildRet(env.builder, this.expr.returnValue);
 
+        env.symbolToMemory.exitScope();
         //env.DumpIR();
     }
 

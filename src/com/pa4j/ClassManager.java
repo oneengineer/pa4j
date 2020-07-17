@@ -25,6 +25,9 @@ class ClassManager {
     LLVMValueRef OBJ_NULL;
     HashSet<String> buildin_functions = new HashSet<String>();
 
+    HashSet<AbstractSymbol> buildin_class = new HashSet<>();
+
+
 
     public ClassManager(TypeCheckEnv env, CodeGenEnv cenv){
         this.env = env;
@@ -42,6 +45,9 @@ class ClassManager {
         buildin_functions.add("main");
         buildin_functions.add("type_name");
         buildin_functions.add("copy");
+
+        buildin_class.add(TreeConstants.Object_);
+        buildin_class.add(TreeConstants.IO);
     }
 
     public ArrayList<AttrItem> dumpAttrs(class_c c){
@@ -93,7 +99,7 @@ class ClassManager {
         var attrTable = citem.attrTable;
         attrTable.init_tag_vpointer();
         for (var p:parents){
-            if (p == TreeConstants.Object_)
+            if (buildin_class.contains(p))
                 continue;
 
             class_c c2 = env.findClass(p);
@@ -108,6 +114,12 @@ class ClassManager {
         attrTable.assignIndices();
     }
 
+
+    public void init_basic_class(CodeGenEnv cenv){
+        ClassItem sc = new StringClass(cenv);
+        this.classTypeMap.put( TreeConstants.Str, sc );
+    }
+
     /*
     * gen function types
     * gen Attr Table,  virtual Table
@@ -116,6 +128,7 @@ class ClassManager {
     public void analyzeClass_pass1(class_c c){
         ClassItem citem = new ClassItem();
         classTypeMap.put(c.name, citem);
+        citem.class_ = c;
 
         this.class_method(c, citem);
 
@@ -125,6 +138,7 @@ class ClassManager {
         citem.struct_typeRef = struct_funType;
         cenv.DumpIR( struct_funType ); //debug
 
+        citem.virtualTable.class_ = c;
         citem.virtualTable.createTableArray(this.cenv); // create virtual table
 
         // init constructor
@@ -139,6 +153,50 @@ class ClassManager {
     * */
     public void analyzeClass_pass2(class_c c) {
         this.CreateConstructor(c);
+    }
+
+    public void parseMethodBody(method m, ClassItem citem){
+        cenv.self_class = citem.class_;
+        var idx = citem.classMethod.findMethod(m);
+        FuncItem funcItem = citem.classMethod.members.get(idx);
+        cenv.current_funcItem = funcItem;
+        cenv.currentFunctionRef = funcItem.funRef;
+        m.code(cenv);
+    }
+
+    public void pushClassAttrToScope(ClassItem citem){
+        for (var i:citem.attrTable.members){
+            var key = i.attrSymbol;
+            AttrItem value = i;
+            cenv.symbolToMemory.addId(key, value);
+            // !! Update previously defined symbols automatically
+            // so that even same name variable will use the current class member.
+        }
+    }
+
+    /*
+     * gen constructor
+     *
+     * */
+    public void analyzeClass_pass3(class_c c) {
+        cenv.symbolToMemory.enterScope(); // initial scope
+        // push class member into scope
+        // it is Score location
+        var citem = this.classTypeMap.get(c.name);
+
+        //TODO push attribute to scope here
+        pushClassAttrToScope(citem);
+
+        var i = c.features.getElements().asIterator();
+        while (i.hasNext()){
+            TreeNode a = (TreeNode)i.next();
+            if (a instanceof method){
+                var b = (method)a;
+                parseMethodBody(b, citem);
+            }
+        }
+
+        cenv.symbolToMemory.exitScope();
     }
 
     Map<AbstractSymbol, ClassItem> classTypeMap = new HashMap<>();
@@ -161,8 +219,6 @@ class ClassManager {
         // call memcpy
         var p1 = LLVMGetParam(fun, 0);
 
-        cenv.DumpIR(citem.struct_typeRef);//debug
-        //LLVMValueRef size2 = LLVMSizeOf(fun_type);
 
         var size = LLVMSizeOf(citem.struct_typeRef);
         //var align = LLVMAlignOf(citem.struct_typeRef);
@@ -171,6 +227,12 @@ class ClassManager {
         LLVMBuildMemCpy(cenv.builder, dst, a, p1, a, size);
         LLVMBuildRet(cenv.builder, dst);
         citem.copyFun = fun;
+
+        cenv.DumpIR(fun); // debug
+
+        System.out.println("dump size");
+        cenv.DumpIR(size); // debug
+
     }
 
     public void CreateConstructor_funType(class_c c) {
@@ -189,7 +251,7 @@ class ClassManager {
 
         var pp2 = new PointerPointer(1);
         pp2.put(0, CodeGenEnv.char_star);
-        var init_funType = LLVMFunctionType(retType, pp ,1,0);
+        var init_funType = LLVMFunctionType(LLVMVoidType(), pp2 ,1,0);
         name = "new_init_" + c.name.str;
         citem.constructor_initval_fun = cenv.addFunction(init_funType, name); // init value by given a pointer
         //debug print out fun
@@ -215,7 +277,7 @@ class ClassManager {
         LLVMPositionBuilderAtEnd(cenv.builder, BB);
         // only initialize self elements.
         var this_p = LLVMGetParam(fun, 0);
-        var struct_p = LLVMBuildBitCast(cenv.builder, this_p, citem.struct_typeRef , "this_p");
+        var struct_p = LLVMBuildBitCast(cenv.builder, this_p, citem.struct_typeRef_pointer() , "this_p");
         var i = c.features.getElements();
         while (i.hasMoreElements()){
             var a = i.nextElement();
@@ -260,6 +322,9 @@ class ClassManager {
         List<AbstractSymbol> parents = env.inheritChain(c.name);
         for (var i: parents){
             // call each class's initializer one by one, including the current class's
+            if (buildin_class.contains(i))
+                continue;
+
             var class_c2 = this.classTypeMap.get(i);
             var initval_fun = class_c2.constructor_initval_fun;
 
@@ -271,9 +336,9 @@ class ClassManager {
 
         // constructor alloca space first, then call init functions by one by from parent to this.
 
-
+        var ret_value = LLVMBuildBitCast(cenv.builder, this_p, cenv.char_star, "ret_value");
         cenv.DumpIR(fun); // debug
-        LLVMBuildRet( cenv.builder, this_p ); // return pointer
+        LLVMBuildRet( cenv.builder, ret_value ); // return pointer
         return fun;
     }
 

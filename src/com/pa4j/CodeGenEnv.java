@@ -15,6 +15,7 @@ class StoreItem{
     int funParamIdx = -1;
     LLVMValueRef value;
     String name;
+    AbstractSymbol symbol;
 
     public LLVMValueRef code(CodeGenEnv env){
         if (funParamIdx >= 0)
@@ -29,6 +30,8 @@ class CodeGenEnv {
 
     LLVMValueRef self_pointer;
     class_c self_class;
+
+    FuncItem current_funcItem;
 
     ClassManager classManager;
 
@@ -48,7 +51,6 @@ class CodeGenEnv {
     Map<String, LLVMValueRef> globalText = new HashMap<>();
 
     //TODO make this stack like,
-    Map<String, StoreItem> valueMap = new HashMap<>();
 
     LLVMValueRef out_int_printf_txt;
     LLVMValueRef out_string_printf_txt;
@@ -61,6 +63,8 @@ class CodeGenEnv {
 
 
     LLVMValueRef INT0;
+    LLVMValueRef INT1;
+    LLVMValueRef INT2;
     LLVMValueRef BOOLFALSE;
     LLVMValueRef STRING_EMPTY;
     LLVMValueRef OBJ_NULL;
@@ -75,6 +79,8 @@ class CodeGenEnv {
         builder = LLVMCreateBuilder();
 
         INT0 = LLVMConstInt(this.int_type, 0, 0);
+        INT1 = LLVMConstInt(this.int_type, 1, 0);
+        INT2 = LLVMConstInt(this.int_type, 2, 0);
         BOOLFALSE = LLVMConstInt(this.bool_type, 0, 0);
         STRING_EMPTY = this.global_text("", "STRING_EMPTY");
         OBJ_NULL = this.null_ptr;
@@ -107,11 +113,22 @@ class CodeGenEnv {
 
     public void DumpIR(LLVMValueRef v){
         LLVMDumpValue(v);
+        try {
+            Thread.sleep(10);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
     }
 
     public void DumpIR(LLVMTypeRef v){
         var s = LLVMPrintTypeToString(v);
         System.err.println(s.getString());
+        try {
+            Thread.sleep(10);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
 
@@ -138,6 +155,8 @@ class CodeGenEnv {
         this.init_abort_function();
         this.init_string_function();
         this.init_copy_function();
+
+
     }
 
     public void init_abort_function(){

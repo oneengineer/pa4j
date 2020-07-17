@@ -141,12 +141,42 @@ class VirtualTable{
 }
 
 class ClassItem{
+    class_c class_;
     LLVMTypeRef struct_typeRef;
+    LLVMTypeRef struct_typeRef_pointer(){
+        return LLVMPointerType(this.struct_typeRef,0);
+    }
     LLVMValueRef constructorFun;
     LLVMValueRef constructor_initval_fun;
     LLVMValueRef copyFun;
     VirtualTable virtualTable;
     AttrTable attrTable;
     VirtualTable classMethod; // methid defined in class
+
+
+    void dumpIR_debug(CodeGenEnv cenv){
+        try {
+
+            System.out.println("--- dump " + class_.name.str +  "--- IR ----");
+            System.out.println("struct_typeRef: ");Thread.sleep(10);
+            cenv.DumpIR( struct_typeRef );
+
+
+
+            System.out.println("\n---constructor: ");Thread.sleep(10);
+            cenv.DumpIR(constructorFun);
+
+            System.out.println("constructor initializer: ");Thread.sleep(10);
+            cenv.DumpIR(constructor_initval_fun);
+
+            System.out.println("\n----class method: ");
+            for (var i:classMethod.members){
+                System.out.println("method: " + i.funSymbol.str);Thread.sleep(10);
+                cenv.DumpIR(i.funRef);
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
 }
 
