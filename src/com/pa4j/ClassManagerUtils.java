@@ -92,6 +92,7 @@ class VirtualTable{
             f.storeIdx = members.size();
             members.add(f);
         }
+        classMethodMap.put( f.funSymbol, f.storeIdx);
     }
 
     // function symbol to position in the table
@@ -112,7 +113,7 @@ class VirtualTable{
             return x;
         }
         else
-            throw new RuntimeException("Cannot find method" + m.name.str);
+            throw new RuntimeException("Cannot find method " + m.name.str);
     }
 
     LLVMTypeRef tableType(){

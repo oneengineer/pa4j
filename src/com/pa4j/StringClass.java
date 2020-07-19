@@ -81,6 +81,11 @@ public class StringClass extends ClassItem {
         virtualTable.addAndReplace(length_fun);
     }
 
+    /*
+    *
+    * String constructor
+    * String(char * pointer, int length);
+    * */
     private void init_constructor(CodeGenEnv cenv){
         // pass a char * pointer, and an integer.
         // no need to use strlen,

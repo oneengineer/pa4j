@@ -32,6 +32,7 @@ class CodeGenEnv {
     class_c self_class;
 
     FuncItem current_funcItem;
+    ClassItem citem;
 
     ClassManager classManager;
 
@@ -131,6 +132,25 @@ class CodeGenEnv {
         }
     }
 
+    public String DumpIRtoStr(LLVMTypeRef v){
+        var s = LLVMPrintTypeToString(v);
+        try {
+            Thread.sleep(10);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        return s.getString();
+    }
+
+    public String DumpIRtoStr(LLVMValueRef v){
+        var s = LLVMPrintValueToString(v);
+        try {
+            Thread.sleep(10);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        return s.getString();
+    }
 
 
     public LLVMValueRef addFunction(LLVMTypeRef fun, String name){
@@ -150,13 +170,15 @@ class CodeGenEnv {
     public void init(){
         this.init_global_text();
         this.create_printf();
+
+    }
+
+    public void init_buildin(){
         this.init_out_int();
         this.init_out_string();
         this.init_abort_function();
         this.init_string_function();
         this.init_copy_function();
-
-
     }
 
     public void init_abort_function(){
@@ -280,7 +302,7 @@ class CodeGenEnv {
     }
 
     private void init_out_string(){
-        var args = new LLVMTypeRef[] { char_star };
+        var args = new LLVMTypeRef[] { char_star }; // char star takes String Object !!
         var theType = LLVMFunctionType( LLVMInt32Type(), new PointerPointer( args ), args.length , 0 );
         LLVMValueRef fun = addFunction(theType, "out_string");
 
@@ -297,7 +319,17 @@ class CodeGenEnv {
         var BB = LLVMAppendBasicBlock(fun,"funciton_BB");
         LLVMPositionBuilderAtEnd(builder, BB);
         var p = LLVMGetParam(fun,0);
-        PointerPointer params3 = new PointerPointer(out_string_printf_txt, p); // printf("%d", x)
+        // convert p to String Obj pointer
+        var strClass = classManager.classTypeMap.get(TreeConstants.Str);
+        p = LLVMBuildBitCast( builder, p, strClass.struct_typeRef_pointer() , "str_obj_pointer");
+
+        // 3rd position is char pointer
+        var pp = new PointerPointer<>(new LLVMValueRef[] {
+                this.INT0,
+                LLVMConstInt(int_type, 3, 0) });  // need 0!
+        var charPointer = LLVMBuildGEP(builder, p, pp, 2,"charPointer");
+
+        PointerPointer params3 = new PointerPointer(out_string_printf_txt, charPointer); // printf("%s", x)
         var temp = LLVMBuildCall(builder,
                 funMap.get("printf"),params3, 2, "call_printf");
         LLVMBuildRet(builder, temp);
@@ -323,6 +355,22 @@ class CodeGenEnv {
         var theType = LLVMFunctionType( LLVMInt32Type(), new PointerPointer( args ), args.length , 1 );
         var printf = addFunction( theType, "printf" );
         funMap.put("printf", printf);
+    }
+
+    public LLVMValueRef findVar(AbstractSymbol name){
+        var item = symbolToMemory.lookup(name);
+        if (item instanceof StoreItem){ // store to item
+            return ((StoreItem)item).value;
+        } else if (item instanceof AttrItem){
+            var item2 = ((AttrItem)item);
+            var idx = LLVMConstInt(LLVMInt32Type(), item2.storeIdx, 0);
+            //get pointer from this pointer
+            var this_p = (LLVMValueRef)symbolToMemory.lookup(TreeConstants.self);
+            var pp = new PointerPointer( new LLVMValueRef[]{ idx } ); // TODO ! not sure if need zero or not
+            return LLVMBuildGEP(builder, this_p, pp, 1, item2.name);
+        } else {
+            throw new RuntimeException("doesn know type");
+        }
     }
 
 }

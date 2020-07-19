@@ -10,6 +10,7 @@ import java.util.*;
 import java.io.PrintStream;
 import java.util.Vector;
 
+import com.sun.source.tree.Tree;
 import org.bytedeco.javacpp.BytePointer;
 import org.bytedeco.javacpp.PointerPointer;
 import org.bytedeco.llvm.LLVM.*;
@@ -245,8 +246,6 @@ abstract class Expression extends TreeNode {
     }
 
 
-    public LLVMValueRef returnValue;
-
     public void code(CodeGenEnv env){
         throw new RuntimeException("Not implemented code function");
     }
@@ -451,6 +450,7 @@ class programc extends Program {
         cenv.init();
 
         cenv.classManager.init_basic_class(cenv);
+        cenv.init_buildin();
 
         //create function shapes
         while (class_i.hasNext()){
@@ -468,35 +468,11 @@ class programc extends Program {
                 m.classTypeMap.get(c.name).dumpIR_debug(cenv);
         }
 
-        //debug
-        //cenv.DumpIRToFile("out_bv.ll"); //DEBUG GEN
-
-        //cenv.symbolToMemory.enterScope(); // initial scope
-        //cenv.PushVars(  ); what to push??
-        //TODO here
-
-        //create constructor function body
         class_i = classes.getElements().asIterator();
-        while (class_i.hasNext()){
-            var c = (class_c)class_i.next();
-            var temp_fun = m.CreateConstructor(c);
-            // debug each constructor
-            System.out.println("-- debug "  + c.getName() + "--");
-            cenv.DumpIR(temp_fun);
-        }
-
-//        class_i = classes.getElements().asIterator();
-//        while (class_i.hasNext()){
-//            var c = (class_c)class_i.next();
-//            cenv.self_class = c;
-//            c.code(cenv);
-//        }
-
         while (class_i.hasNext()){
             var c = (class_c)class_i.next();
             m.analyzeClass_pass3(c);
         }
-
 
         // TODO create other function body
         //cenv.DumpIR();
@@ -738,10 +714,19 @@ class method extends Feature {
         //TODO remove this
         // return the type of function
         var ai = formals.getElements();
-        var n = formals.getLength();
+        var n = formals.getLength() + 1;
         var items = new StoreItem[n];
         var arr = new LLVMTypeRef[ n ];
         int i = 0;
+        // first one is this pointer
+        var item0 = new StoreItem();
+        item0.funParamIdx = i;
+        item0.name = "self_p";
+        item0.symbol = TreeConstants.self;
+        items[i] = item0;
+        arr[i] = CodeGenEnv.char_star;// self pointer is char *
+
+        i += 1;
         while (ai.hasMoreElements()){
             var t = (formalc)ai.nextElement();
             arr[i] = env.translateType(t.type_decl);
@@ -766,16 +751,40 @@ class method extends Feature {
     //call initialize class in main function
     private void code_main_class(CodeGenEnv env){
         //TODO call new function and set self_pointer in env for the class
+        // create a new object of current class
+        // push attr of this class into the scope
+
+        if (this.name == TreeConstants.main_meth)
+            throw new RuntimeException("Not implemented gen main");
+
+        env.symbolToMemory.enterScope();
+
+        // create function
+        var main_fun_type = LLVMFunctionType( CodeGenEnv.void_type, new PointerPointer(),0,0 );
+        var fun = env.addFunction( main_fun_type, "main" );
+
         class_c c = env.self_class;
         var citem = env.classManager.classTypeMap.get(c.name);
         var t = new PointerPointer(0);
         LLVMValueRef result_p = LLVMBuildCall(env.builder, citem.constructorFun, t, 0, c.name.str + "_ptr");// return a pointer
-        env.self_pointer = result_p;
+        var this_p = LLVMBuildBitCast(env.builder, result_p, env.citem.struct_typeRef_pointer(),"this_p");
+        env.self_pointer = this_p;
+
+        for (var i : env.citem.attrTable.members){
+            if (i.name.equals("classTag") || i.name.equals("vt_pointer")){
+                continue; // skip class tag and vt pointer
+            }
+            env.symbolToMemory.addId(i.attrSymbol, i);
+        }
+
+        this.expr.code(env);
+
+        env.symbolToMemory.exitScope();
+
     }
 
     @Override
     public void code(CodeGenEnv env) {
-        //TODO dump a function
         //  1. function's ref in stored in env's currentFunctionRef
         //  2. parse body, function parameters has to be stored at a location,
         //     so that they can be handle in a uniform way
@@ -789,22 +798,36 @@ class method extends Feature {
         env.symbolToMemory.enterScope();
 
         var fun = env.currentFunctionRef;
+        var BB = LLVMAppendBasicBlock(fun, "function_BB");
+        LLVMPositionBuilderAtEnd(env.builder, BB);
 
         var ai = formals.getElements();
-        var n = formals.getLength();
+        var n = formals.getLength() + 1; // + 1 because of self pointer
         var items = new StoreItem[n];
         int i = 0;
         // first one is this pointer
+
+        var this_p = LLVMGetParam(fun,0); // should convert to class pointer type
+        this_p = LLVMBuildBitCast(env.builder, this_p, env.citem.struct_typeRef_pointer(),"this_p");
+        env.symbolToMemory.addId(TreeConstants.self, this_p); // push this pointer to scope, denoted as self
+        env.self_pointer = this_p;
         i += 1;
+
         while (ai.hasMoreElements()){
             var t = (formalc)ai.nextElement();
             var item = new StoreItem();
-            item.funParamIdx = i;
+
+            var t1 = env.translateType(t.type_decl);
+            var t_p = LLVMPointerType(t1, 0);
+            item.value = LLVMBuildMalloc(env.builder, t_p, "para__" + t.name.str); // create a pointer of parameter and copy it
+            // store value into parameter
+            var para = LLVMGetParam(fun, i);
+            LLVMBuildStore(env.builder, para, item.value); // TODO !!! problemetic !!!!!!!!!
+
             item.name = t.name.str;
             item.symbol = t.name;
             items[i] = item;
             env.symbolToMemory.addId(item.symbol, item); // push to scope
-
             i += 1;
         }
 
@@ -815,12 +838,13 @@ class method extends Feature {
 
         // register this function
         // fun is the BB of this function
-        var BB = LLVMAppendBasicBlock(fun, "function_BB");
-        LLVMPositionBuilderAtEnd(env.builder, BB);
 
 
         this.expr.code(env);
 
+        // if it is not return void
+        if (this.expr.returnValue == null)
+            throw new RuntimeException("expr.returnValue == null");
         LLVMBuildRet(env.builder, this.expr.returnValue);
 
         env.symbolToMemory.exitScope();
@@ -1077,7 +1101,8 @@ class assign extends Expression {
     @Override
     public void code(CodeGenEnv env) {
         this.expr.code(env);
-        var valueAddr = env.valueMap.get(this.name.str).value;
+        LLVMValueRef valueAddr = env.findVar(this.name);
+
         LLVMBuildStore(env.builder, expr.returnValue, valueAddr);
         this.returnValue = expr.returnValue;
     }
@@ -1299,7 +1324,7 @@ class dispatch extends Expression {
                 expr.code(env);
                 ref = expr.returnValue;
             }
-            // convert it to char *
+            // convert self pointer to char *
             var ref2 = LLVMBuildBitCast(env.builder, ref, env.char_star, "converted_type");
             arr[i] = ref2;
             i +=1;
@@ -1310,23 +1335,32 @@ class dispatch extends Expression {
             i += 1;
         }
 
-//        if (this.name.str.equals("out_int")){
-//            env.call_out_int(arr[0]);
-//            return;
-//        }
-//
-//        if (this.name.str.equals("out_string")){
-//            env.call_out_string(arr[0]);
-//            return;
-//        }
-
         // call function
         //TODO use abstract Symbol as map key, instead of string
 
-        LLVMValueRef fun = env.funMap.get(functionName);
 
-        if (fun == null){
-            throw new RuntimeException("Cannot find "+ functionName);
+        // get proper class's proper method
+        var map = env.classManager.classTypeMap;
+        ClassItem citem;
+        if (expr.get_type() == TreeConstants.SELF_TYPE){
+            //throw new RuntimeException("not supported self type yet");
+            // use current class
+            citem = map.get(env.self_class.name);
+        } else {
+            citem = map.get(expr.get_type());
+            if (citem == null)
+                throw new RuntimeException("cannot find class " + expr.get_type().str);
+        }
+        //TODO handle buildin function
+        LLVMValueRef fun;
+
+        if ( buildin_functions.contains(this.name.str) ){
+            fun = env.funMap.get(this.name.str);
+        }
+        else {
+            int funIdx = citem.virtualTable.findMethod(this.name);
+            FuncItem funItem = citem.virtualTable.members.get(funIdx);
+            fun = funItem.funRef;
         }
 
         //TODO hack out_int,  abort return type here
@@ -1341,6 +1375,7 @@ class dispatch extends Expression {
             this.returnValue = LLVMBuildCall(env.builder, fun,
                     new PointerPointer(arr), n, "ret_r");
         }
+        // return value is the function return value
 
     }
 
@@ -1660,6 +1695,7 @@ class block extends Expression {
     @Override
     public void code(CodeGenEnv env) {
         this.body.code(env);
+        this.returnValue = this.body.returnValue;
     }
 
     public void dump_with_types(PrintStream out, int n) {
@@ -1745,14 +1781,18 @@ class let extends Expression {
 
     @Override
     public void code(CodeGenEnv env) {
-        //TODO push scope, add value map
+        env.symbolToMemory.enterScope();
+
         var type = env.translateType(this.type_decl);
         LLVMValueRef value_addr = LLVMBuildAlloca(env.builder, type, this.identifier.str);
         var item = new StoreItem();
         item.name = this.identifier.str;
         item.value = value_addr;
-        env.valueMap.put(item.name, item);
+        item.symbol = this.identifier;
+        env.symbolToMemory.addId(item.symbol, item);
         this.body.code(env);
+
+        env.symbolToMemory.exitScope();
     }
 
     public void dump_with_types(PrintStream out, int n) {
@@ -2409,9 +2449,20 @@ class string_const extends Expression {
     public void code(CodeGenEnv env) {
         var s = this.token.str;
         var temp = env.global_text(s, s);
+        var stringClass = env.classManager.classTypeMap.get(TreeConstants.Str);
         var indices = new PointerPointer(env.const0_64, env.const0_64); //64 bit ints
         LLVMValueRef converted_p = LLVMConstInBoundsGEP(temp, indices, 2); //TODO
-        this.returnValue = converted_p;
+
+        env.DumpIR(converted_p); //debug type
+
+        var length = LLVMConstInt(CodeGenEnv.int_type,s.length() + 1,1);
+
+        var fun = stringClass.constructorFun;
+        var pp = new PointerPointer(new LLVMValueRef[]{ converted_p, length});
+        var str_p = LLVMBuildCall(env.builder, fun, pp, 2, "str_obj_pointer");
+        //TODO create string class
+
+        this.returnValue = str_p;
     }
 
     public void dump_with_types(PrintStream out, int n) {
@@ -2597,8 +2648,8 @@ class object extends Expression {
 
     @Override
     public void code(CodeGenEnv env) {
-        // TODO look up table in env, find address of symbol, then emit load return reg
-        this.returnValue = env.valueMap.get( this.name.str ).code(env);
+        var addr = env.findVar(this.name); // it should be a pointer
+        this.returnValue = LLVMBuildLoad(env.builder, addr, "load_"+this.name.str);
     }
 
     public void dump_with_types(PrintStream out, int n) {

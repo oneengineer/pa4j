@@ -19,6 +19,8 @@ ON AN "AS IS" BASIS, AND THE UNIVERSITY OF CALIFORNIA HAS NO OBLIGATION TO
 PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 */
 
+import org.bytedeco.llvm.LLVM.LLVMValueRef;
+
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 
@@ -252,6 +254,7 @@ abstract class TreeNode {
      * line in the source file from which this node came.
      */
     protected int lineNumber;
+    public LLVMValueRef returnValue;
 
     /**
      * Builds a new tree node

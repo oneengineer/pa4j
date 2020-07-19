@@ -19,6 +19,8 @@ ON AN "AS IS" BASIS, AND THE UNIVERSITY OF CALIFORNIA HAS NO OBLIGATION TO
 PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 */
 
+import org.bytedeco.llvm.LLVM.LLVMValueRef;
+
 import java.io.PrintStream;
 import java.util.Vector;
 import java.util.Enumeration;
@@ -91,6 +93,7 @@ abstract class ListNode extends TreeNode {
         for (Object element : elements) {
             var x = (TreeNode) element;
             x.code(env);
+            this.returnValue = x.returnValue;
         }
     }
 

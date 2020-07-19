@@ -57,8 +57,9 @@ class ClassManager {
             TreeNode a = (TreeNode)i.next();
             if (a instanceof attr){
                 AttrItem item = new AttrItem();
-                var b = (attr)a;
+                attr b = (attr)a;
                 item.typeRef = b.code_type(this.cenv);
+                item.attrSymbol = b.name;
                 arr.add(item);
             }
         }
@@ -136,7 +137,7 @@ class ClassManager {
 
         var struct_funType = citem.attrTable.createStruct();
         citem.struct_typeRef = struct_funType;
-        cenv.DumpIR( struct_funType ); //debug
+        //cenv.DumpIR( struct_funType ); //debug
 
         citem.virtualTable.class_ = c;
         citem.virtualTable.createTableArray(this.cenv); // create virtual table
@@ -156,18 +157,32 @@ class ClassManager {
     }
 
     public void parseMethodBody(method m, ClassItem citem){
+        //TODO skip main function for now
+        if (m.name == TreeConstants.main_meth)
+            return;
+
         cenv.self_class = citem.class_;
-        var idx = citem.classMethod.findMethod(m);
-        FuncItem funcItem = citem.classMethod.members.get(idx);
-        cenv.current_funcItem = funcItem;
-        cenv.currentFunctionRef = funcItem.funRef;
+        cenv.citem = citem;
+        if (m.name != TreeConstants.main_meth) {
+            var idx = citem.classMethod.findMethod(m);
+            FuncItem funcItem = citem.classMethod.members.get(idx);
+            cenv.current_funcItem = funcItem;
+            cenv.currentFunctionRef = funcItem.funRef;
+        }
         m.code(cenv);
     }
 
     public void pushClassAttrToScope(ClassItem citem){
         for (var i:citem.attrTable.members){
+
+            if (i.name.equals("classTag") || i.name.equals("vt_pointer")){
+                continue; // skip class tag and vt pointer
+            }
+
             var key = i.attrSymbol;
+            assert key != null;
             AttrItem value = i;
+
             cenv.symbolToMemory.addId(key, value);
             // !! Update previously defined symbols automatically
             // so that even same name variable will use the current class member.
